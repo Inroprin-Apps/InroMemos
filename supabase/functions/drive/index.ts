@@ -90,8 +90,7 @@ Deno.serve(async (req) => {
   try {
     const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
     // El reloj de la base (pg_cron) entra con su propio secreto.
-    const reloj = Deno.env.get("CRON_TOKEN");
-    if (reloj && token === reloj) {
+    if (token && await esReloj(token)) {
       const cuerpo = await req.json().catch(() => ({}));
       if (cuerpo.accion === "pendientes") return responder(200, await pendientes());
       if (cuerpo.accion === "cuentas_sincronizar") return responder(200, await sincronizarCuentas());
@@ -487,14 +486,29 @@ async function pendientes() {
 // Cuentas bancarias: copia de las bases sin números completos, y verificación
 // ===========================================================================
 
-function claveCuentas(): string {
-  const k = Deno.env.get("CUENTAS_CLAVE");
-  if (!k || k.length < 32) throw new Rechazo(409, "Falta configurar CUENTAS_CLAVE en los secretos de Supabase.");
+/**
+ * La clave de las huellas de cuentas la genera la base (integraciones
+ * «cuentas», que solo lee el sistema): nunca pasa por una persona.
+ */
+async function claveCuentas(): Promise<string> {
+  const { data } = await db.from("integraciones").select("datos").eq("clave", "cuentas").maybeSingle();
+  const k = (data?.datos as { clave?: string } | null)?.clave;
+  if (!k || k.length < 32) throw new Rechazo(409, "Falta la clave de cuentas en integraciones (migración …_reloj).");
   return k;
 }
 
+/** El reloj de la base entra con un token cuya huella está en integraciones «reloj». */
+async function esReloj(token: string): Promise<boolean> {
+  const { data } = await db.from("integraciones").select("datos").eq("clave", "reloj").maybeSingle();
+  const guardada = (data?.datos as { huella?: string } | null)?.huella;
+  if (!guardada) return false;
+  const h = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token)))]
+    .map((b) => b.toString(16).padStart(2, "0")).join("");
+  return h === guardada;
+}
+
 async function sincronizarCuentas() {
-  const clave = claveCuentas();
+  const clave = await claveCuentas();
   const { data: bases } = await db.from("bases_cuentas").select("*").eq("activo", true);
   if (!bases?.length) throw new Rechazo(409, "No hay bases de cuentas configuradas.");
   const { token } = await googleConectado();
@@ -555,7 +569,7 @@ async function verificarCuenta(
   uid: string,
   cuerpo: { linea_id?: string; cuenta?: string; cci?: string; banco?: string },
 ) {
-  const clave = claveCuentas();
+  const clave = await claveCuentas();
   const { data: l } = await db.from("lineas_pago").select("*, memo:memos(id, emisor_id, estado)").eq(
     "id",
     String(cuerpo.linea_id),

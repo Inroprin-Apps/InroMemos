@@ -48,8 +48,13 @@ async function autorizar(req: Request) {
   const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
   if (token && token === LLAVE) return;
   // El reloj de la base (pg_cron), con su propio secreto.
-  const reloj = Deno.env.get("CRON_TOKEN");
-  if (reloj && token === reloj) return;
+  const { data: r } = await db.from("integraciones").select("datos").eq("clave", "reloj").maybeSingle();
+  const huella = (r?.datos as { huella?: string } | null)?.huella;
+  if (token && huella) {
+    const h = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token)))]
+      .map((b) => b.toString(16).padStart(2, "0")).join("");
+    if (h === huella) return;
+  }
   const { data: quien } = await db.auth.getUser(token);
   if (!quien?.user) throw new Rechazo(401, "Tu sesión venció. Vuelve a entrar.");
   const { data: p } = await db.from("personas").select("es_administracion, activo").eq("id", quien.user.id)
