@@ -69,8 +69,14 @@ export function htmlMemo(
 ): string {
   const reservado = m.confidencialidad !== "normal";
   const total = lineas.reduce((s, l) => s + (Number(l.monto) || 0), 0);
-  const celda = "border-bottom:1px solid #e4e4e1;padding:4px 6px;font-size:9.5pt;vertical-align:top";
-  const cab = "border-bottom:1px solid #d2d2ce;padding:4px 6px;font-size:8.5pt;color:#5c5c58;text-align:left";
+  // Google Docs dibuja un borde negro en cada celda que no diga lo contrario:
+  // cada lado se declara a mano.
+  const sinBorde = "border-top:none;border-left:none;border-right:none";
+  const celda = `${sinBorde};border-bottom:1px solid #e4e4e1;padding:4px 6px;font-size:9.5pt;vertical-align:top`;
+  const cab =
+    `${sinBorde};border-bottom:1px solid #d2d2ce;padding:4px 6px;font-size:8.5pt;color:#5c5c58;text-align:left`;
+  const dato = "border:none;padding:3px 0;vertical-align:top";
+  const linea = `${sinBorde};border-bottom:2px solid #006db1;padding:0 0 8px 0;vertical-align:bottom`;
 
   const tabla = !m.requiere_pago || lineas.length === 0
     ? ""
@@ -97,31 +103,41 @@ ${
 </table>`;
 
   const sello = m.codigo_sello
-    ? `<table style="border-collapse:collapse;margin-top:18px;border:2px solid #00a298"><tr><td style="padding:8px 14px;color:#007a72">
+    ? `<table style="border-collapse:collapse;margin-top:18px;width:100%"><tr><td style="border:2px solid #00a298;padding:8px 14px;color:#007a72">
 <b style="letter-spacing:1px">APROBADO</b><br>${esc(o.aprobador ?? "")}${o.aprobador ? " · " : ""}${
       esc(fechaLarga(m.aprobado_en).replace(/^Lima, /, ""))
     } · código <b>${esc(m.codigo_sello)}</b></td></tr></table>`
     : `<p style="margin-top:18px;color:#8a8a86">Pendiente de aprobación (versión ${m.version}).</p>`;
 
-  const copias = m.copias.length ? `<tr><td><b>CC:</b></td><td>${esc(m.copias.join(", "))}</td></tr>` : "";
+  const copias = m.copias.length
+    ? `<tr><td style="${dato}"><b>CC:</b></td><td style="${dato}">${esc(m.copias.join(", "))}</td></tr>`
+    : "";
 
   return `<html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;font-size:10.5pt;color:#1d1d1b">
-<table style="width:100%;border-collapse:collapse;border-bottom:2px solid #006db1"><tr>
-<td style="padding-bottom:6px">${
-    o.logo ? `<img src="${esc(o.logo)}" height="40">` : `<b style="font-size:16pt">${esc(o.empresa)}</b>`
+<table style="width:100%;border-collapse:collapse;border:none"><tr>
+<td style="${linea}">${
+    o.logo ? `<img src="${esc(o.logo)}" width="180" height="40">` : `<b style="font-size:16pt">${esc(o.empresa)}</b>`
   }</td>
-<td style="text-align:right;color:#8a8a86;font-size:8.5pt">${esc(o.empresa)}<br>${esc(o.unidad)}</td></tr></table>
-<p style="font-size:13pt;margin-top:16px"><b>MEMORÁNDUM ${esc(m.numero_visible)}</b></p>
-<table style="border-collapse:collapse">
-<tr><td style="width:80pt"><b>A:</b></td><td>${esc(m.destinatario_nombre || m.destinatario_correo)}</td></tr>
-<tr><td><b>DE:</b></td><td>${esc(m.emisor_nombre)}</td></tr>
+<td style="${linea};text-align:right;color:#8a8a86;font-size:8.5pt">${esc(o.empresa)}<br>${
+    esc(o.unidad)
+  }</td></tr></table>
+<p style="font-size:13pt;margin-top:18pt;margin-bottom:8pt"><b>MEMORÁNDUM ${esc(m.numero_visible)}</b></p>
+<table style="border-collapse:collapse;border:none">
+<tr><td style="${dato};width:80pt"><b>A:</b></td><td style="${dato}">${
+    esc(m.destinatario_nombre || m.destinatario_correo)
+  }</td></tr>
+<tr><td style="${dato}"><b>DE:</b></td><td style="${dato}">${esc(m.emisor_nombre)}</td></tr>
 ${copias}
-<tr><td><b>ASUNTO:</b></td><td>${esc(m.asunto)}</td></tr>
-<tr><td><b>FECHA:</b></td><td>${esc(fechaLarga(m.emitido_en))}</td></tr>
+<tr><td style="${dato}"><b>ASUNTO:</b></td><td style="${dato}">${esc(m.asunto)}</td></tr>
+<tr><td style="${dato}"><b>FECHA:</b></td><td style="${dato}">${esc(fechaLarga(m.emitido_en))}</td></tr>
 </table>
-${m.cuerpo.split(/\n{2,}/).map((p) => `<p>${esc(p).replace(/\n/g, "<br>")}</p>`).join("\n")}
+${
+    m.cuerpo.split(/\n{2,}/).map((p) =>
+      `<p style="margin-top:10pt;line-height:1.4">${esc(p).replace(/\n/g, "<br>")}</p>`
+    ).join("\n")
+  }
 ${tabla}
-<p style="margin-top:14px">Atentamente,</p>
+<p style="margin-top:14pt">Atentamente,</p>
 ${sello}
 </body></html>`;
 }
