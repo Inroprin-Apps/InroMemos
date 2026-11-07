@@ -31,7 +31,7 @@ begin
      or not exists (select 1 from pg_namespace where nspname = 'cron') then
     return;
   end if;
-  create extension if not exists pg_net;
+  create extension if not exists pg_net with schema extensions;
 
   if not exists (select 1 from vault.secrets where name = 'reloj_token') then
     token := encode(sha256((gen_random_uuid()::text || gen_random_uuid()::text)::bytea), 'hex');

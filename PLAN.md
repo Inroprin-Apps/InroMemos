@@ -68,7 +68,7 @@ regla de que **el servidor decide; la pantalla solo muestra**.
 
 ## 4. Para ponerlo en marcha (en orden)
 
-1. **Aplicar las 3 migraciones** en Supabase (`20261107000001_memos`, `…02_memos_catalogos`, `…03_inroconta`) y publicar la función `inroconta`.
+1. **Aplicar las 3 migraciones** en Supabase (`memos`, `…02_memos_catalogos`, `…03_inroconta`) y publicar la función `inroconta`.
 2. **Token de INROCONTA** (en el repositorio de INROCONTA): `pnpm apps:token inroscan`; la entrada `inroscan=<sha256>` va a `APPS_DATOS_TOKENS` en Vercel (y redesplegar); el token y la dirección de INROCONTA van a los secretos de Supabase `INROCONTA_TOKEN` e `INROCONTA_URL`.
 3. **Configurar** en «Áreas y permisos de memos»: jefe y suplente de cada área, quién emite dónde, KPIs e interárea, y la **semilla** de cada serie (Finanzas 28, Administración 213, RRHH 624, Compras Nacionales 5, COMEX 1, INROPLAS Finanzas 5 al 6-oct; confirmar con Drive).
 4. **Traer ahora** los datos de INROCONTA y emitir un memo de prueba.
