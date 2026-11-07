@@ -47,9 +47,9 @@ function alertas(r: RendicionConResumen, repetidos: number): Alerta[] {
 }
 
 const TONO: Record<Alerta["tono"], string> = {
-  rojo: "bg-peligro-suave text-peligro",
-  ambar: "bg-aviso-suave text-aviso",
-  gris: "bg-superficie-2 text-texto-2",
+  rojo: "bg-danger-soft text-danger-strong",
+  ambar: "bg-warning-soft text-warning-strong",
+  gris: "bg-surface-2 text-ink-2",
 };
 
 function Contenido() {
@@ -72,7 +72,7 @@ function Contenido() {
   }, []);
 
   if (error) return <Aviso>{error}</Aviso>;
-  if (!rendiciones) return <p className="text-texto-3">Cargando…</p>;
+  if (!rendiciones) return <p className="text-ink-3">Cargando…</p>;
 
   const de = (estado: Pestana) =>
     rendiciones.filter((r) =>
@@ -122,7 +122,7 @@ function Contenido() {
 
       {falla && <Aviso>{falla}</Aviso>}
 
-      <section className="flex flex-col gap-3 rounded-grande bg-superficie p-4 shadow-sm">
+      <section className="flex flex-col gap-3 rounded-card border border-control bg-surface p-4">
         <div className="flex flex-wrap items-center gap-2">
           <div role="tablist" aria-label="Estado" className="mr-auto flex flex-wrap gap-1.5">
             <Pestanita activa={pestana === "enviada"} onClick={() => setPestana("enviada")}>
@@ -150,9 +150,9 @@ function Contenido() {
         </div>
 
         {lista.length === 0 ? (
-          <p className="py-6 text-center text-texto-2">{pestana === "enviada" ? "No hay nada esperando revisión." : "Nada por aquí."}</p>
+          <p className="py-6 text-center text-ink-2">{pestana === "enviada" ? "No hay nada esperando revisión." : "Nada por aquí."}</p>
         ) : (
-          <div className="overflow-x-auto rounded-chico border border-borde">
+          <div className="overflow-x-auto rounded-control border border-line">
             <table className={`${tablaAdmin} min-w-[980px]`}>
               <thead>
                 <tr className={cabeceraAdmin}>
@@ -170,12 +170,12 @@ function Contenido() {
                   const c = cuentas(r.comprobantes, r.monto, r.no_sustentan ?? []);
                   const a = alertas(r, repetidos.get(r.id) ?? 0);
                   return (
-                    <tr key={r.id} className="border-t border-borde">
+                    <tr key={r.id} className="border-t border-line">
                       <td className="px-3 py-3">
-                        <Link href={`/rendicion/?id=${r.id}`} className="whitespace-nowrap font-semibold text-acento-texto hover:underline">
+                        <Link href={`/rendicion/?id=${r.id}`} className="whitespace-nowrap font-semibold text-primary-strong hover:underline">
                           {tituloRendicion(r)}
                         </Link>
-                        <span className="block text-xs text-texto-3">
+                        <span className="block text-xs text-ink-3">
                           {r.version > 1 ? `Versión ${r.version} · corrigió lo observado` : r.version === 1 ? "Versión 1" : "Sin enviar"}
                         </span>
                       </td>
@@ -184,7 +184,7 @@ function Contenido() {
                       <td className="px-3 py-3">{c.comprobantes}</td>
                       <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums">
                         {soles(c.gastado)}
-                        <span className="block text-xs text-texto-3">de {soles(aNumero(r.monto))}</span>
+                        <span className="block text-xs text-ink-3">de {soles(aNumero(r.monto))}</span>
                       </td>
                       <td className="px-3 py-3">
                         <span className="flex flex-wrap gap-1">
@@ -195,7 +195,7 @@ function Contenido() {
                               </span>
                             ))
                           ) : (
-                            <span className="rounded-md bg-exito-suave px-2 py-0.5 text-xs font-semibold text-exito">Sin alertas</span>
+                            <span className="rounded-md bg-success-soft px-2 py-0.5 text-xs font-semibold text-success-strong">Sin alertas</span>
                           )}
                         </span>
                       </td>

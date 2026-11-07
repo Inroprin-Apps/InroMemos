@@ -115,38 +115,38 @@ export function Historial({
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-tinta/30" onClick={onCerrar}>
+    <div className="fixed inset-0 z-40 flex justify-end bg-ink/30" onClick={onCerrar}>
       <aside
         role="dialog"
         aria-modal="true"
         aria-labelledby="historial-titulo"
-        className="flex h-full w-full max-w-md flex-col bg-superficie shadow-xl"
+        className="flex h-full w-full max-w-md flex-col bg-surface shadow-card"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-3 border-b border-borde px-5 py-4">
-          <h2 id="historial-titulo" className="font-display text-lg font-bold text-tinta">
+        <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
+          <h2 id="historial-titulo" className="text-lg font-bold text-ink">
             Historial de cambios
           </h2>
-          <button type="button" onClick={onCerrar} aria-label="Cerrar" className="rounded-chico p-2 text-texto-2 hover:bg-superficie-2">
+          <button type="button" onClick={onCerrar} aria-label="Cerrar" className="rounded-control p-2 text-ink-2 hover:bg-surface-2">
             <IconoCerrar />
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {error && <Aviso>{error}</Aviso>}
-          {!entradas && !error && <p className="text-texto-3">Cargando…</p>}
+          {!entradas && !error && <p className="text-ink-3">Cargando…</p>}
           {entradas && (
             <ol className="space-y-4">
               {entradas.map((e) => {
                 const d = describir(e);
                 if (!d) return null;
                 return (
-                  <li key={e.id} className="border-l-2 border-borde pl-3">
-                    <p className="text-xs text-texto-3">
+                  <li key={e.id} className="border-l-2 border-line pl-3">
+                    <p className="text-xs text-ink-3">
                       {cuando(e.en)} · {quien(e.actor)}
                     </p>
-                    <p className="text-sm font-semibold text-texto">{d.que}</p>
+                    <p className="text-sm font-semibold text-ink">{d.que}</p>
                     {d.detalle.map((x) => (
-                      <p key={x} className="text-[13px] text-texto-2">
+                      <p key={x} className="text-[13px] text-ink-2">
                         {x}
                       </p>
                     ))}

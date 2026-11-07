@@ -49,27 +49,27 @@ export function NuevaRendicion({ persona, onCerrar }: { persona: Persona; onCerr
   );
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-tinta/40 p-0 sm:items-center sm:p-4" onClick={onCerrar}>
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-ink/40 p-0 sm:items-center sm:p-4" onClick={onCerrar}>
       <div
         ref={dialogo}
         role="dialog"
         aria-modal="true"
         aria-labelledby="nueva-titulo"
-        className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-t-grande bg-superficie p-5 shadow-xl sm:rounded-grande sm:p-6"
+        className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-t-card bg-surface p-5 shadow-card sm:rounded-card sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-3">
-          <h2 id="nueva-titulo" className="font-display text-lg font-bold text-tinta">
+          <h2 id="nueva-titulo" className="text-lg font-bold text-ink">
             Nueva rendición
           </h2>
-          <button type="button" onClick={onCerrar} aria-label="Cerrar" className="rounded-chico p-2 text-texto-2 hover:bg-superficie-2">
+          <button type="button" onClick={onCerrar} aria-label="Cerrar" className="rounded-control p-2 text-ink-2 hover:bg-surface-2">
             <IconoCerrar />
           </button>
         </div>
 
         {cajas.length > 0 && (
           <div className="mt-4 space-y-2">
-            <p className="text-sm font-medium text-texto-2">Caja chica que administras</p>
+            <p className="text-sm font-medium text-ink-2">Caja chica que administras</p>
             {cajas.map((c) => (
               <button
                 key={c.id}
@@ -86,7 +86,7 @@ export function NuevaRendicion({ persona, onCerrar }: { persona: Persona; onCerr
                 className={`flex w-full items-center justify-between gap-3 text-left ${botonSecundario}`}
               >
                 <span>Nueva reposición · Caja {c.numero}</span>
-                <span className="text-sm text-texto-2">
+                <span className="text-sm text-ink-2">
                   {ocupadas.has(c.id) ? "Tiene una en curso" : `Fondo ${soles(c.monto_fondo)}`}
                 </span>
               </button>
@@ -156,14 +156,14 @@ function FormularioMemo({
   };
 
   return (
-    <form onSubmit={crear} className={`space-y-4 ${conCajas ? "mt-6 border-t border-borde pt-5" : "mt-4"}`}>
-      <p className="text-sm font-medium text-texto-2">Memo de viáticos</p>
+    <form onSubmit={crear} className={`space-y-4 ${conCajas ? "mt-6 border-t border-line pt-5" : "mt-4"}`}>
+      <p className="text-sm font-medium text-ink-2">Memo de viáticos</p>
       <div className="grid gap-4 sm:grid-cols-3">
-        <label className="block text-sm font-medium text-texto-2">
+        <label className="block text-sm font-medium text-ink-2">
           N° de memo
           <input className={`mt-1 ${campo}`} value={numero} onChange={(e) => setNumero(e.target.value)} placeholder="675-2026" />
         </label>
-        <label className="block text-sm font-medium text-texto-2">
+        <label className="block text-sm font-medium text-ink-2">
           Monto recibido
           <input
             className={`mt-1 ${campo}`}
@@ -172,12 +172,12 @@ function FormularioMemo({
             inputMode="decimal"
           />
         </label>
-        <label className="block text-sm font-medium text-texto-2">
+        <label className="block text-sm font-medium text-ink-2">
           Fecha de solicitud
           <input className={`mt-1 ${campo}`} type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
         </label>
         {empresas.length > 1 && (
-          <label className="block text-sm font-medium text-texto-2 sm:col-span-3">
+          <label className="block text-sm font-medium text-ink-2 sm:col-span-3">
             Empresa
             <select className={`mt-1 ${campo}`} value={empresa ?? ""} onChange={(e) => setEmpresa(Number(e.target.value) || null)}>
               <option value="">Elige…</option>

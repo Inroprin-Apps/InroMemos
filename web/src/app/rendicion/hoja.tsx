@@ -13,13 +13,13 @@ import { Lista, Miniatura, Texto, celda, celdaChica, celdaFalta, useEnlaces } fr
 type Filtro = "todos" | "revisar" | "leyendo" | "descartados";
 
 const TONOS: Record<EstadoFila["clave"], string> = {
-  listo: "text-exito",
-  leyendo: "text-info",
-  falta: "text-aviso",
-  repetido: "text-aviso",
-  fallido: "text-peligro",
-  observado: "text-peligro",
-  descartado: "text-texto-3",
+  listo: "text-success-strong",
+  leyendo: "text-primary-strong",
+  falta: "text-warning-strong",
+  repetido: "text-warning-strong",
+  fallido: "text-danger-strong",
+  observado: "text-danger-strong",
+  descartado: "text-ink-3",
 };
 
 export function Hoja({
@@ -92,7 +92,7 @@ export function Hoja({
   const dolares = vigentes.filter((c) => c.moneda === "USD").reduce((s, c) => s + (c.total == null ? 0 : aNumero(c.total)), 0);
 
   return (
-    <section aria-label="Comprobantes" className="flex min-w-0 flex-col gap-3 rounded-grande bg-superficie p-3 shadow-sm sm:p-4">
+    <section aria-label="Comprobantes" className="flex min-w-0 flex-col gap-3 rounded-card border border-control bg-surface p-3 sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         <div role="tablist" aria-label="Filtrar comprobantes" className="flex flex-wrap gap-1.5">
           <Pestanita activa={filtro === "todos"} onClick={() => setFiltro("todos")}>
@@ -113,7 +113,7 @@ export function Hoja({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex h-10 min-w-56 flex-1 items-center gap-2 rounded-chico border border-borde-2 px-3 text-texto-3 focus-within:border-acento">
+          <label className="flex h-10 min-w-56 flex-1 items-center gap-2 rounded-control border border-control px-3 text-ink-3 focus-within:border-primary">
             <IconoBuscar className="h-4 w-4 shrink-0" />
             <input
               type="search"
@@ -121,7 +121,7 @@ export function Hoja({
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Buscar proveedor, RUC o N°"
               aria-label="Buscar"
-              className="w-full bg-transparent text-sm text-texto outline-none"
+              className="w-full bg-transparent text-sm text-ink outline-none"
             />
           </label>
           {herramientas}
@@ -133,7 +133,7 @@ export function Hoja({
       )}
 
       {visibles.length === 0 ? (
-        <p className="px-1 py-6 text-center text-texto-2">
+        <p className="px-1 py-6 text-center text-ink-2">
           {filas.length === 0
             ? "Todavía no hay comprobantes. Sube las fotos o PDF: se leen solos (en PC también puedes arrastrarlos a la pantalla)."
             : "Nada con ese filtro."}
@@ -141,10 +141,10 @@ export function Hoja({
       ) : (
         <>
           {/* PC: la hoja a todo el ancho. */}
-          <div className="hidden overflow-x-auto rounded-chico border border-borde md:block">
+          <div className="hidden overflow-x-auto rounded-control border border-line md:block">
             <table className="w-full min-w-[1040px] border-collapse">
               <thead>
-                <tr className="bg-superficie-2 text-left text-[11px] font-bold uppercase tracking-wider text-texto-3">
+                <tr className="bg-surface-2 text-left text-[11px] font-bold uppercase tracking-wider text-ink-3">
                   <th scope="col" className="w-9 px-2 py-2.5">
                     {editable && (
                       <input
@@ -186,14 +186,14 @@ export function Hoja({
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t border-borde">
-                  <td colSpan={8} className="px-3 py-3 text-[13px] text-texto-3">
+                <tr className="border-t border-line">
+                  <td colSpan={8} className="px-3 py-3 text-[13px] text-ink-3">
                     {cuenta.todos} comprobante{cuenta.todos === 1 ? "" : "s"}
                     {cuenta.descartados > 0 && ` · ${cuenta.descartados} descartado${cuenta.descartados === 1 ? "" : "s"} no suma${cuenta.descartados === 1 ? "" : "n"}`}
                   </td>
                   <td className="whitespace-nowrap px-2 py-3 text-right font-bold tabular-nums">
                     {soles(total)}
-                    {dolares > 0 && <span className="block text-xs font-normal text-texto-3">y US$ {dolares.toFixed(2)}</span>}
+                    {dolares > 0 && <span className="block text-xs font-normal text-ink-3">y US$ {dolares.toFixed(2)}</span>}
                   </td>
                   <td />
                 </tr>
@@ -364,19 +364,19 @@ function Estado({ c, e, archivo, editable, onGuardar, onReleer }: PropsFila) {
         {e.texto}
       </span>
       {e.detalle && (
-        <span className="line-clamp-2 text-xs text-texto-3" title={e.detalle}>
+        <span className="line-clamp-2 text-xs text-ink-3" title={e.detalle}>
           {e.clave === "observado" ? `«${e.detalle}»` : e.detalle}
         </span>
       )}
       {editable && (
         <span className="flex gap-2 text-xs">
           {e.clave === "fallido" && archivo && (
-            <button type="button" className="font-semibold text-acento-texto underline" onClick={() => onReleer(archivo.id)}>
+            <button type="button" className="font-semibold text-primary-strong underline" onClick={() => onReleer(archivo.id)}>
               Reintentar
             </button>
           )}
           {e.clave !== "leyendo" && (
-            <button type="button" className="text-texto-2 underline" onClick={() => onGuardar(c.id, { descartado: !c.descartado })}>
+            <button type="button" className="text-ink-2 underline" onClick={() => onGuardar(c.id, { descartado: !c.descartado })}>
               {c.descartado ? "Recuperar" : "Descartar"}
             </button>
           )}
@@ -389,9 +389,9 @@ function Estado({ c, e, archivo, editable, onGuardar, onReleer }: PropsFila) {
 function Fila(p: PropsFila & { elegida: boolean; onElegir: () => void }) {
   const { c, e, rendicionId, archivo, enlace, editable, elegida, onElegir } = p;
   const f = campos(p);
-  const fondo = elegida ? "bg-info-suave/60" : e.clave === "descartado" ? "opacity-55" : e.porRevisar ? "bg-aviso-suave/30" : "";
+  const fondo = elegida ? "bg-primary-soft/60" : e.clave === "descartado" ? "opacity-55" : e.porRevisar ? "bg-warning-soft/30" : "";
   return (
-    <tr className={`border-t border-borde align-middle ${fondo}`}>
+    <tr className={`border-t border-line align-middle ${fondo}`}>
       <td className="px-2 py-1.5">
         {editable && <input type="checkbox" aria-label="Elegir fila" checked={elegida} onChange={onElegir} />}
       </td>
@@ -429,9 +429,9 @@ function Fila(p: PropsFila & { elegida: boolean; onElegir: () => void }) {
 function Tarjeta(p: PropsFila) {
   const { c, e, rendicionId, archivo, enlace } = p;
   const f = campos(p);
-  const rotulo = "block text-[11px] font-bold uppercase tracking-wider text-texto-3";
+  const rotulo = "block text-[11px] font-bold uppercase tracking-wider text-ink-3";
   return (
-    <li className={`rounded-medio border border-borde ${e.clave === "descartado" ? "opacity-55" : ""}`}>
+    <li className={`rounded-card border border-line ${e.clave === "descartado" ? "opacity-55" : ""}`}>
       <details>
         <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
           <Miniatura archivo={archivo} pagina={c.pagina} enlace={enlace} />
@@ -443,7 +443,7 @@ function Tarjeta(p: PropsFila) {
           </span>
           <span className="font-bold tabular-nums">{c.total == null ? "—" : aNumero(c.total).toFixed(2)}</span>
         </summary>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-borde p-3">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-line p-3">
           <label className={rotulo}>Fecha{f.fecha}</label>
           <label className={rotulo}>Total{f.total}</label>
           <label className={rotulo}>Tipo{f.tipo}</label>
@@ -457,7 +457,7 @@ function Tarjeta(p: PropsFila) {
           <label className={`${rotulo} col-span-2`}>Motivo{f.descripcion}</label>
           <div className="col-span-2 flex items-end justify-between gap-3">
             <Estado {...p} />
-            <Link href={`/rendicion/revisar/?id=${rendicionId}&c=${c.id}`} className="text-sm font-semibold text-acento-texto underline">
+            <Link href={`/rendicion/revisar/?id=${rendicionId}&c=${c.id}`} className="text-sm font-semibold text-primary-strong underline">
               Ver imagen
             </Link>
           </div>
@@ -480,9 +480,9 @@ function AccionesEnBloque({
 }) {
   const [area, setArea] = useState("");
   const [solicitante, setSolicitante] = useState("");
-  const control = "h-8.5 rounded-lg border border-info/30 bg-superficie px-2 text-[13px] text-info";
+  const control = "h-8.5 rounded-lg border border-primary-line/30 bg-surface px-2 text-[13px] text-primary-strong";
   return (
-    <div role="toolbar" aria-label="Acciones sobre lo elegido" className="flex flex-wrap items-center gap-2 rounded-chico bg-info-suave px-3 py-2 text-sm text-info">
+    <div role="toolbar" aria-label="Acciones sobre lo elegido" className="flex flex-wrap items-center gap-2 rounded-control bg-primary-soft px-3 py-2 text-sm text-primary-strong">
       <b className="mr-1">
         {cuantas} elegido{cuantas === 1 ? "" : "s"}
       </b>
@@ -521,7 +521,7 @@ function AccionesEnBloque({
         <button
           type="button"
           disabled={!area && !solicitante.trim()}
-          className={`${control} font-semibold disabled:opacity-50`}
+          className={`${control} font-semibold disabled:bg-disabled disabled:text-disabled-ink`}
           onClick={async () => {
             await onAplicar({ ...(area ? { area_id: Number(area) } : {}), ...(solicitante.trim() ? { solicitante: solicitante.trim() } : {}) });
             setArea("");

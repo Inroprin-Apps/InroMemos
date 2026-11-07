@@ -11,16 +11,16 @@ import type { Archivo } from "@/lib/tipos";
 
 /** La celda sin tamaño de letra, para usarla también en cifras grandes. */
 export const celdaBase =
-  "w-full min-w-0 rounded-md border border-transparent bg-transparent px-2 py-1 text-texto outline-none transition " +
-  "hover:border-borde-2 focus:border-acento focus:bg-superficie focus:ring-2 focus:ring-acento-suave " +
-  "disabled:cursor-default disabled:hover:border-transparent disabled:text-texto";
+  "w-full min-w-0 rounded-md border border-transparent bg-transparent px-2 py-1 text-ink outline-none transition " +
+  "hover:border-control focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary-soft " +
+  "disabled:cursor-default disabled:hover:border-transparent disabled:text-ink";
 
 export const celda = `${celdaBase} text-[13.5px]`;
 
-export const celdaChica = `${celdaBase} text-xs !text-texto-3`;
+export const celdaChica = `${celdaBase} text-xs !text-ink-3`;
 
 /** Una celda vacía que hace falta llenar. */
-export const celdaFalta = "border-aviso/50 bg-aviso-suave/60";
+export const celdaFalta = "border-warning/50 bg-warning-soft/60";
 
 export function Texto({
   valor,
@@ -135,20 +135,20 @@ export function Miniatura({
 }) {
   if (!archivo) {
     return (
-      <span className={`flex ${className} items-center justify-center rounded-md border border-dashed border-borde-2 text-[10px] text-texto-3`}>
+      <span className={`flex ${className} items-center justify-center rounded-md border border-dashed border-control text-[10px] text-ink-3`}>
         a mano
       </span>
     );
   }
   const pdf = archivo.tipo_mime === "application/pdf";
-  if (!enlace) return <span className={`block ${className} animate-pulse rounded-md bg-superficie-2`} />;
+  if (!enlace) return <span className={`block ${className} animate-pulse rounded-md bg-surface-2`} />;
   if (pdf) {
     return (
-      <span className={`flex ${className} items-center justify-center rounded-md border border-borde-2 bg-superficie-2 text-[10px] font-bold text-texto-2`}>
+      <span className={`flex ${className} items-center justify-center rounded-md border border-control bg-surface-2 text-[10px] font-bold text-ink-2`}>
         PDF{pagina > 1 ? ` ${pagina}` : ""}
       </span>
     );
   }
   // eslint-disable-next-line @next/next/no-img-element -- enlace firmado y temporal: no pasa por el optimizador
-  return <img src={enlace} alt="Comprobante" className={`${className} rounded-md border border-borde-2 object-cover`} />;
+  return <img src={enlace} alt="Comprobante" className={`${className} rounded-md border border-control object-cover`} />;
 }

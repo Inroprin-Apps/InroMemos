@@ -61,7 +61,7 @@ function Contenido() {
   }, [desde, hasta]);
 
   if (error) return <Aviso>{error}</Aviso>;
-  if (!filas || !catalogos) return <p className="text-texto-3">Cargando…</p>;
+  if (!filas || !catalogos) return <p className="text-ink-3">Cargando…</p>;
 
   const grupos = agrupar(filas, por, ESTADOS_REPORTE[estados]);
   const nombre = (clave: string) => nombreDe(clave, por, catalogos, nombres);
@@ -79,16 +79,16 @@ function Contenido() {
 
   return (
     <>
-      <section className="flex flex-wrap items-end gap-3 rounded-grande bg-superficie p-4 shadow-sm">
-        <label className="block text-sm font-medium text-texto-2">
+      <section className="flex flex-wrap items-end gap-3 rounded-card border border-control bg-surface p-4">
+        <label className="block text-sm font-medium text-ink-2">
           Desde
           <input type="date" className={`mt-1 ${campo}`} value={desde} onChange={(e) => e.target.value && setDesde(e.target.value)} />
         </label>
-        <label className="block text-sm font-medium text-texto-2">
+        <label className="block text-sm font-medium text-ink-2">
           Hasta
           <input type="date" className={`mt-1 ${campo}`} value={hasta} onChange={(e) => e.target.value && setHasta(e.target.value)} />
         </label>
-        <label className="block text-sm font-medium text-texto-2">
+        <label className="block text-sm font-medium text-ink-2">
           Rendiciones
           <select className={`mt-1 ${campo}`} value={estados} onChange={(e) => setEstados(e.target.value as keyof typeof ESTADOS_REPORTE)}>
             <option value="revisadas">Enviadas y aprobadas</option>
@@ -108,7 +108,7 @@ function Contenido() {
         <Indicador titulo="Grupos" valor={String(grupos.length)} detalle={`Por ${POR.find((p) => p.clave === por)?.texto.toLowerCase()}`} />
       </section>
 
-      <section className="flex flex-col gap-3 rounded-grande bg-superficie p-4 shadow-sm">
+      <section className="flex flex-col gap-3 rounded-card border border-control bg-surface p-4">
         <div role="tablist" aria-label="Agrupar por" className="flex flex-wrap gap-1.5">
           {POR.map((p) => (
             <Pestanita key={p.clave} activa={por === p.clave} onClick={() => setPor(p.clave)}>
@@ -117,9 +117,9 @@ function Contenido() {
           ))}
         </div>
         {grupos.length === 0 ? (
-          <p className="py-6 text-center text-texto-2">No hay comprobantes en ese periodo.</p>
+          <p className="py-6 text-center text-ink-2">No hay comprobantes en ese periodo.</p>
         ) : (
-          <div className="overflow-x-auto rounded-chico border border-borde">
+          <div className="overflow-x-auto rounded-control border border-line">
             <table className={`${tablaAdmin} min-w-[640px]`}>
               <thead>
                 <tr className={cabeceraAdmin}>
@@ -130,23 +130,23 @@ function Contenido() {
               </thead>
               <tbody>
                 {grupos.map((g) => (
-                  <tr key={g.clave} className="border-t border-borde">
-                    <td className={`px-3 py-2.5 ${g.clave ? "font-medium" : "italic text-texto-3"}`}>{nombre(g.clave)}</td>
+                  <tr key={g.clave} className="border-t border-line">
+                    <td className={`px-3 py-2.5 ${g.clave ? "font-medium" : "italic text-ink-3"}`}>{nombre(g.clave)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">{g.cuantos}</td>
                     <td className="px-3 py-2.5">
                       <span className="flex items-center gap-3">
-                        <span className="h-2 flex-1 overflow-hidden rounded-full bg-borde">
-                          <span className="block h-full bg-acento" style={{ width: `${(g.soles / mayor) * 100}%` }} />
+                        <span className="h-2 flex-1 overflow-hidden rounded-full bg-line">
+                          <span className="block h-full bg-primary" style={{ width: `${(g.soles / mayor) * 100}%` }} />
                         </span>
                         <span className="w-28 text-right font-semibold tabular-nums">{soles(g.soles)}</span>
                       </span>
-                      {g.dolares > 0 && <span className="block text-right text-xs text-texto-3">y US$ {g.dolares.toFixed(2)}</span>}
+                      {g.dolares > 0 && <span className="block text-right text-xs text-ink-3">y US$ {g.dolares.toFixed(2)}</span>}
                     </td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t border-borde font-bold">
+                <tr className="border-t border-line font-bold">
                   <td className="px-3 py-3">Total</td>
                   <td className="px-3 py-3 text-right tabular-nums">{cuantos}</td>
                   <td className="px-3 py-3 text-right tabular-nums">{soles(totalSoles)}</td>

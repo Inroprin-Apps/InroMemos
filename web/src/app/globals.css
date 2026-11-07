@@ -1,47 +1,121 @@
 @import "tailwindcss";
 
-/* Identidad INROPRIN / Roland Print: los mismos valores que la app actual
-   (estilos.css), para que las dos se lean como una sola mientras conviven. */
-@theme inline {
-  --color-fondo: #edf1f4;
-  --color-superficie: #ffffff;
-  --color-superficie-2: #f6f8fa;
-  --color-borde: #e4e9ee;
-  --color-borde-2: #d2dae2;
+/*
+ * Sistema visual INROCONTA (el de Contabilidad de INROPRIN), para que todas
+ * las apps del grupo se lean como una sola. Fuente: INROCONTA-DESIGN-SYSTEM.md.
+ *
+ * Regla: un componente pinta con un ROL (bg-primary, text-ink-2,
+ * border-control, bg-danger-soft…), nunca con un valor de marca, un hex suelto
+ * ni la paleta de Tailwind (nada de text-white ni gray-500). Cambiar la marca
+ * es cambiar una fila de acá.
+ */
+@theme {
+  /* Roland Print: los cinco colores del logo, y el azul oscuro y el gris de su web. */
+  --color-brand-blue: #006db1;
+  --color-brand-blue-dark: #005a94;
+  --color-brand-red: #e30613;
+  --color-brand-teal: #00a298;
+  --color-brand-yellow: #ffdd00;
+  --color-brand-ink: #1d1d1b;
+  --color-brand-light: #f2f2f2;
 
-  --color-acento: #00a298;
-  --color-acento-texto: #007a72;
-  /* Fondo de los botones principales: con #00a298 el texto blanco no llega
-     al contraste mínimo. */
-  --color-acento-oscuro: #005c56;
-  --color-acento-suave: #e6f5f4;
-  --color-tinta: #1d1d1b;
+  /* Neutros: grises cálidos alrededor del negro del logo. */
+  --color-canvas: var(--color-brand-light);
+  --color-surface: #ffffff;
+  --color-surface-2: #f7f7f6;
+  --color-surface-3: #ececea;
+  --color-line: #e4e4e1;
+  --color-control: #d2d2ce;
+  --color-ink: var(--color-brand-ink);
+  --color-ink-2: #5c5c58;
+  --color-ink-3: #8a8a86;
+  --color-disabled: #e6e6e3;
+  --color-disabled-ink: #9d9d98;
+  /* Texto e íconos sobre un relleno de color (primary, ink, danger). */
+  --color-on-fill: #ffffff;
 
-  --color-texto: #101a24;
-  --color-texto-2: #52627a;
-  /* Rótulos chicos: más oscuro que antes para que se lean sobre blanco y gris. */
-  --color-texto-3: #55677d;
+  /* Principal: el azul de la marca. -strong es su texto sobre -soft. */
+  --color-primary: var(--color-brand-blue);
+  --color-primary-strong: var(--color-brand-blue-dark);
+  --color-primary-soft: #e3eef7;
+  --color-primary-line: color-mix(in srgb, var(--color-brand-blue) 22%, #fff);
+  /* Estados del botón desde el color base: hover un paso más oscuro (92 %),
+     presionado el más oscuro (84 %). */
+  --color-primary-hover: color-mix(in srgb, var(--color-primary) 92%, #000);
+  --color-primary-active: color-mix(in srgb, var(--color-primary) 84%, #000);
+  --color-ink-hover: color-mix(in srgb, var(--color-ink) 88%, #fff);
+  --color-ink-active: color-mix(in srgb, var(--color-ink) 76%, #fff);
+  /* Segundo color de datos (la otra serie al lado del azul). */
+  --color-teal: var(--color-brand-teal);
+  --color-teal-strong: #007a72;
+  --color-teal-soft: #e1f4f2;
 
-  --color-peligro: #c62828;
-  --color-peligro-suave: #fdecec;
-  --color-aviso: #a15c07;
-  --color-aviso-suave: #fdf3e3;
-  --color-exito: #0a6e4e;
-  --color-exito-suave: #e6f4ee;
-  --color-info: #006db1;
-  --color-info-suave: #e8f1f8;
+  /* Estados: sólido (barra, punto, insignia) · strong (texto) · soft (chip, aviso). */
+  --color-danger: var(--color-brand-red);
+  --color-danger-strong: #b0050f;
+  --color-danger-soft: #fde8e9;
+  --color-danger-line: color-mix(in srgb, var(--color-brand-red) 25%, #fff);
+  --color-danger-hover: color-mix(in srgb, var(--color-danger) 92%, #000);
+  --color-danger-active: color-mix(in srgb, var(--color-danger) 84%, #000);
+  --color-warning: var(--color-brand-yellow);
+  --color-warning-strong: #8a6300;
+  --color-warning-soft: #fff6cc;
+  --color-success: var(--color-brand-teal);
+  --color-success-strong: var(--color-teal-strong);
+  --color-success-soft: var(--color-teal-soft);
 
-  /* No «s», «m», «l»: rounded-l y rounded-s ya son utilidades de Tailwind
-     para redondear un solo lado. */
-  --radius-chico: 10px;
-  --radius-medio: 14px;
-  --radius-grande: 18px;
+  /* Esquinas. No «s», «m», «l»: rounded-l y rounded-s ya son de Tailwind. */
+  --radius-card: 12px;
+  --radius-button-lg: 10px;
+  --radius-control: 9px;
+  --radius-row: 8px;
+  --radius-segment: 7px;
+  --radius-bar: 6px;
 
-  --font-sans: var(--font-dm-sans);
-  --font-display: var(--font-sora);
+  /* Solo lo que flota (toast, menú del usuario) lleva sombra. */
+  --shadow-card: 0 2px 4px rgba(29, 29, 27, 0.05), 0 6px 16px rgba(29, 29, 27, 0.06);
 }
 
-body {
-  background: var(--color-fondo);
-  color: var(--color-texto);
+/* La letra la carga next/font en layout.tsx (Manrope, 400 a 800). */
+@theme inline {
+  --font-sans: var(--font-manrope), system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-size: 14px;
+  }
+  /* Tailwind 4 ya no le da la mano a <button>: sin ella nada parece clicable. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  select:not(:disabled),
+  label:has(> input:not(:disabled)) {
+    cursor: pointer;
+  }
+  button:disabled,
+  select:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
+
+/* Hueco de carga: del tamaño del valor que falta, para que nada salte. */
+@utility hueco {
+  display: inline-block;
+  vertical-align: middle;
+  border-radius: var(--radius-bar);
+  background: var(--color-ink);
+  opacity: 0.1;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Se desliza sin mostrar la barra (el menú lateral). */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }

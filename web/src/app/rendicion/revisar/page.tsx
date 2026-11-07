@@ -5,7 +5,7 @@ import { VistaRevisar } from "./revisar";
 // estática no tiene rutas con el id adentro.
 export default function Pagina() {
   return (
-    <Suspense fallback={<p className="p-6 text-texto-3">Abriendo…</p>}>
+    <Suspense fallback={<p className="p-6 text-ink-3">Abriendo…</p>}>
       <VistaRevisar />
     </Suspense>
   );
