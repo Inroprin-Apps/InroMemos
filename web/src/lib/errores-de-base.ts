@@ -40,7 +40,7 @@ export function mensajeDeBase(e: ErrorDeBase): string {
       return "No tienes permiso para hacer eso.";
     // Una actualización que los permisos dejaron en cero filas.
     case "PGRST116":
-      return "Ya no se puede editar: la rendición cambió de estado. Recarga la página.";
+      return "Ya no se puede editar: cambió de estado. Recarga la página.";
     // Los triggers ya escriben su motivo en castellano.
     case "P0001":
       return e.message ?? "La base rechazó el cambio.";

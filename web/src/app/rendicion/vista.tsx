@@ -30,6 +30,7 @@ import { Aviso, botonPrincipal, botonSecundario } from "../piezas";
 import { Cabecera, Resumen } from "./cabecera";
 import { Hoja } from "./hoja";
 import { Historial } from "./historial";
+import { PuenteMemo } from "./puente-memo";
 import { BotonesSubida, EnCola, ZonaArrastre, useSubidas } from "./subidas";
 
 export function VistaRendicion() {
@@ -213,7 +214,7 @@ function HojaRendicion({ id, persona }: { id: string; persona: Persona }) {
   if (errorCatalogos) return <Aviso>{errorCatalogos}</Aviso>;
   if (!datos || !catalogos) {
     return (
-      <p className="text-texto-3" role="status">
+      <p className="text-ink-3" role="status">
         Cargando…
       </p>
     );
@@ -318,7 +319,8 @@ function HojaRendicion({ id, persona }: { id: string; persona: Persona }) {
       {r.estado === "enviada" && (
         <Aviso tono="info">Enviada a administración (versión {r.version}). No se puede editar mientras la revisan.</Aviso>
       )}
-      {editable && motivo && c.comprobantes > 0 && <p className="text-[13px] text-texto-2">Para enviar: {motivo}</p>}
+      <PuenteMemo rendicionId={r.id} estado={r.estado} persona={persona} />
+      {editable && motivo && c.comprobantes > 0 && <p className="text-[13px] text-ink-2">Para enviar: {motivo}</p>}
 
       <Resumen
         r={r}
@@ -348,7 +350,7 @@ function HojaRendicion({ id, persona }: { id: string; persona: Persona }) {
           editable && (
             <div className="hidden items-center gap-2 md:flex">
               {!sinSenal && (
-                <button type="button" onClick={acciones.agregar} className="h-10 px-2 text-sm font-medium text-texto-2 underline">
+                <button type="button" onClick={acciones.agregar} className="h-10 px-2 text-sm font-medium text-ink-2 underline">
                   Agregar a mano
                 </button>
               )}

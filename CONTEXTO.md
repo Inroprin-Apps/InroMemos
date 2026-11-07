@@ -5,7 +5,8 @@
 > produjo. Contiene el problema, las decisiones con su razón, lo aprendido con
 > documentos reales y lo que queda abierto.
 >
-> Última actualización: 26 de octubre de 2026.
+> Última actualización: 7 de noviembre de 2026. La plataforma de memos y la
+> conexión con INROCONTA están en [PLAN.md](PLAN.md).
 
 ---
 
@@ -40,6 +41,10 @@ un puente temporal: es *el* sistema.
   cerró el diseño con barra lateral en un lienzo aprobado por el usuario y se
   retiró la anterior. `/inroscan/` redirige a `/InroScan/web/`.
 - **28-oct-2026:** el repositorio pasó a `Inroprin-Apps/InroScan` (antes `tsdonoso-beep/inroscan`, donde queda el historial previo). La app se publica en <https://inroprin-apps.github.io/InroScan/web/>.
+- **7-nov-2026:** entra la **Plataforma de Memorandums** (diseñada por Finanzas
+  en Apps Script, nunca desplegada) construida sobre la misma base; la app toma
+  el sistema visual de **INROCONTA** y lee de él padrón, SSCO y SIRE. Ver
+  [PLAN.md](PLAN.md).
 
 ---
 

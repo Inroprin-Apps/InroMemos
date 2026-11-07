@@ -74,6 +74,6 @@ jobs:
         with:
           deno-version: v2.5.6
       - run: deno fmt --check .
-      - run: deno check --no-lock leer/index.ts drive/index.ts
+      - run: deno check --no-lock leer/index.ts drive/index.ts inroconta/index.ts
       # exceljs (la hoja de Drive) lee variables de entorno y sus plantillas.
       - run: deno test --no-lock --allow-env --allow-read

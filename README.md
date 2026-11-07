@@ -1,7 +1,7 @@
 # InroScan
 
-El sistema de rendiciones de INROPRIN (Roland Print): **caja chica** y **memos
-de viáticos**. Se captura el comprobante (foto o PDF, desde el teléfono o la
+La app de INROPRIN (Roland Print) para **memorandums** de todas las empresas y
+áreas, y **rendiciones** de caja chica y memos de viáticos. Se captura el comprobante (foto o PDF, desde el teléfono o la
 PC), se lee solo, la persona revisa lo que falte y lo envía; administración lo
 valida con la imagen al lado.
 
@@ -9,7 +9,9 @@ Publicado en <https://inroprin-apps.github.io/InroScan/web/>. La raíz del sitio
 redirige ahí.
 
 > El contexto completo —decisiones con su razón, lo aprendido con documentos
-> reales y lo que queda abierto— está en **[CONTEXTO.md](CONTEXTO.md)**.
+> reales y lo que queda abierto— está en **[CONTEXTO.md](CONTEXTO.md)**. La
+> plataforma de memos, la conexión con INROCONTA y lo que sigue, en
+> **[PLAN.md](PLAN.md)**.
 
 ## Cómo está armado
 
@@ -18,6 +20,8 @@ redirige ahí.
 | `web/` | La app: Next.js con exportación estática, en GitHub Pages bajo `/InroScan/web/`. Instalable en el teléfono y usable sin señal. |
 | `supabase/migrations/` | La base: tablas, permisos por fila, historial de cambios y catálogos. |
 | `supabase/functions/leer/` | La lectura de cada foto o PDF, apenas se sube (Gemini; la clave es el secreto `GEMINI_API_KEY` de Supabase). |
+| `supabase/functions/drive/` | La hoja y el PDF de cada rendición en Drive. |
+| `supabase/functions/inroconta/` | La copia local de padrón de RUC, lista SSCO y registro de compras (SIRE) de INROCONTA (secretos `INROCONTA_URL` e `INROCONTA_TOKEN`). |
 | `supabase/pruebas/` | Permisos por fila verificados contra un Postgres de verdad. |
 | `procesador/` | Reglas de lectura en Python (OCR y apoyo de la hoja en Drive). |
 | `sitio/` | La raíz del sitio publicado: solo redirige a la app. |
