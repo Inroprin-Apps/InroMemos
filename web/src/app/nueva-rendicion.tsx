@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useCatalogos } from "@/lib/catalogos";
 import { aNumero, soles } from "@/lib/cuentas";
 import { crearMemo, crearReposicion, leerMisCajas } from "@/lib/datos";
+import { guardarMiDni, memosParaRendir, miDni, type MemoParaRendir } from "@/lib/memos";
 import { EN_CURSO, recargarRendiciones, useRendiciones } from "@/lib/rendiciones";
 import type { Persona } from "@/lib/sesion";
 import type { Caja } from "@/lib/tipos";
@@ -131,6 +132,35 @@ function FormularioMemo({
   // Con una sola empresa activa no hay nada que elegir.
   const empresa = empresaElegida ?? (empresas.length === 1 ? empresas[0].id : null);
 
+  // Los memos de viáticos de la plataforma que me entregaron dinero y no rendí.
+  const [dni, setDni] = useState<string | null | undefined>(undefined);
+  const [nuevoDni, setNuevoDni] = useState("");
+  const [paraRendir, setParaRendir] = useState<MemoParaRendir[]>([]);
+  useEffect(() => {
+    miDni().then(setDni, () => setDni(null));
+    memosParaRendir().then(setParaRendir, () => setParaRendir([]));
+  }, []);
+
+  const rendirMemo = async (m: MemoParaRendir) => {
+    setGuardando(true);
+    setError(null);
+    try {
+      await onCreado(
+        await crearMemo({
+          numero_memo: m.numero_visible,
+          monto: Number(m.monto),
+          fecha_solicitud: fecha,
+          empresa_id: m.empresa_id,
+          responsable_id: persona.id,
+          memo_entrega_id: m.id,
+        }),
+      );
+    } catch (err) {
+      setError((err as Error).message);
+      setGuardando(false);
+    }
+  };
+
   const crear = async (e: React.FormEvent) => {
     e.preventDefault();
     const importe = aNumero(monto);
@@ -158,6 +188,48 @@ function FormularioMemo({
   return (
     <form onSubmit={crear} className={`space-y-4 ${conCajas ? "mt-6 border-t border-line pt-5" : "mt-4"}`}>
       <p className="text-sm font-medium text-ink-2">Memo de viáticos</p>
+      {paraRendir.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[13px] text-ink-2">Tus memos de viáticos aprobados, listos para rendir:</p>
+          {paraRendir.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              disabled={guardando}
+              onClick={() => rendirMemo(m)}
+              className="flex w-full items-center justify-between gap-3 rounded-control border border-primary-line bg-primary-soft px-3 py-2.5 text-left hover:bg-surface-2"
+            >
+              <span className="min-w-0">
+                <b className="block text-[13.5px] font-semibold text-primary-strong">Rendir el memo {m.numero_visible}</b>
+                <span className="block truncate text-[12px] text-ink-2">{m.asunto}</span>
+              </span>
+              <span className="whitespace-nowrap text-[13px] font-semibold tabular-nums text-ink">{soles(Number(m.monto))}</span>
+            </button>
+          ))}
+          <p className="text-[12px] text-ink-3">O escribe uno emitido fuera de la plataforma:</p>
+        </div>
+      )}
+      {dni === null && (
+        <div className="flex flex-wrap items-end gap-2 rounded-control bg-surface-2 px-3 py-2.5">
+          <label className="min-w-40 flex-1 text-[12.5px] text-ink-2">
+            Tu DNI: con él aparecen aquí tus memos de viáticos de la plataforma
+            <input className={`mt-1 ${campo}`} inputMode="numeric" maxLength={8} value={nuevoDni} onChange={(e) => setNuevoDni(e.target.value.replace(/\D/g, ""))} />
+          </label>
+          <button
+            type="button"
+            className={botonSecundario}
+            disabled={nuevoDni.length !== 8}
+            onClick={() =>
+              guardarMiDni(nuevoDni).then(
+                () => (setDni(nuevoDni), memosParaRendir().then(setParaRendir, () => {})),
+                (e: Error) => setError(e.message),
+              )
+            }
+          >
+            Guardar DNI
+          </button>
+        </div>
+      )}
       <div className="grid gap-4 sm:grid-cols-3">
         <label className="block text-sm font-medium text-ink-2">
           N° de memo

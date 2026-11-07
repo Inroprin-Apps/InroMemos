@@ -14,7 +14,7 @@ export function PanelMemos() {
   return <ConSesion activo="memos">{(persona) => <Contenido persona={persona} />}</ConSesion>;
 }
 
-type Pestana = "todos" | "te-esperan" | "pendiente" | "observado" | "sin-cargo" | "borradores";
+type Pestana = "todos" | "te-esperan" | "pendiente" | "observado" | "sin-cargo" | "por-pagar" | "borradores";
 
 const PESTANAS: { clave: Pestana; texto: string }[] = [
   { clave: "todos", texto: "Todos" },
@@ -22,6 +22,7 @@ const PESTANAS: { clave: Pestana; texto: string }[] = [
   { clave: "pendiente", texto: "Por aprobar" },
   { clave: "observado", texto: "Observados" },
   { clave: "sin-cargo", texto: "Sin cargo" },
+  { clave: "por-pagar", texto: "Por pagar" },
   { clave: "borradores", texto: "Mis borradores" },
 ];
 
@@ -66,6 +67,8 @@ function filtrar(m: Memo, p: Pestana, persona: Persona, ctx: Contexto | null): b
       return m.estado === "observado";
     case "sin-cargo":
       return m.estado === "aprobado" || m.estado === "enviado";
+    case "por-pagar":
+      return m.requiere_pago && ["aprobado", "enviado", "recibido"].includes(m.estado) && m.estado_pago !== "pagado";
     case "borradores":
       return m.estado === "borrador" && m.emisor_id === persona.id;
   }
@@ -206,7 +209,7 @@ function Contenido({ persona }: { persona: Persona }) {
       </div>
 
       <div role="tablist" aria-label="Qué memos ver" className="flex gap-1 overflow-x-auto border-b border-line no-scrollbar">
-        {PESTANAS.map((p) => {
+        {PESTANAS.filter((p) => p.clave !== "por-pagar" || contexto?.permisos.registraPagos || persona.es_administracion).map((p) => {
           const n = contar(p.clave);
           return (
             <button

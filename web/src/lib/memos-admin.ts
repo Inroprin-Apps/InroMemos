@@ -10,6 +10,8 @@ export type UsuarioMemo = {
   cargo: string;
   ver_kpis: boolean;
   interarea_todas: boolean;
+  verifica_cuentas: boolean;
+  registra_pagos: boolean;
   activo: boolean;
   unidades: number[];
 };
@@ -23,7 +25,7 @@ function revisar(r: { error: unknown }) {
 export async function leerConfiguracion(): Promise<{ usuarios: UsuarioMemo[]; correlativos: Correlativo[] }> {
   const db = supabase();
   const [usuarios, miembros, correlativos] = await Promise.all([
-    db.from("usuarios_memo").select("correo, cargo, ver_kpis, interarea_todas, activo").order("correo"),
+    db.from("usuarios_memo").select("correo, cargo, ver_kpis, interarea_todas, verifica_cuentas, registra_pagos, activo").order("correo"),
     db.from("miembros_unidad").select("correo, unidad_id"),
     db.from("correlativos").select("unidad_id, anio, ultimo"),
   ]);
@@ -113,4 +115,30 @@ export async function traerDeInroconta(): Promise<Record<string, { filas?: numbe
     throw new Error(cuerpo?.error ?? "No se pudo traer los datos de INROCONTA.");
   }
   return (data as { resultado: Record<string, { filas?: number; error?: string }> }).resultado;
+}
+
+/** Un token nuevo para InroPay: se muestra una vez; la base guarda solo su huella. */
+export async function generarTokenInroPay(): Promise<string> {
+  const { data, error } = await supabase().functions.invoke("inropay", { body: { accion: "token" } });
+  if (error) throw new Error("No se pudo generar el token de InroPay.");
+  return (data as { token: string }).token;
+}
+
+export type Salud = { pendientes: number; errores: number; ultimoError: string | null; corridas: Corrida[] };
+
+/** Cómo va el sistema: correos por salir o con error, y lo último que corrió. */
+export async function leerSalud(): Promise<Salud> {
+  const db = supabase();
+  const [pend, err, ultimo, corridas] = await Promise.all([
+    db.from("avisos").select("*", { count: "exact", head: true }).eq("estado", "pendiente"),
+    db.from("avisos").select("*", { count: "exact", head: true }).eq("estado", "error"),
+    db.from("avisos").select("error").eq("estado", "error").order("creado_en", { ascending: false }).limit(1).maybeSingle(),
+    db.from("corridas").select("id, job, iniciada_en, terminada_en, resultado, filas, error").order("iniciada_en", { ascending: false }).limit(8),
+  ]);
+  return {
+    pendientes: pend.count ?? 0,
+    errores: err.count ?? 0,
+    ultimoError: (ultimo.data as { error?: string } | null)?.error ?? null,
+    corridas: (corridas.data ?? []) as Corrida[],
+  };
 }

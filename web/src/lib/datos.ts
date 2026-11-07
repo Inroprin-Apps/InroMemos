@@ -69,6 +69,8 @@ export async function crearMemo(datos: {
   fecha_solicitud: string;
   empresa_id: number;
   responsable_id: string;
+  /** El memo de viáticos de la plataforma que entregó el dinero: la base toma de él número y monto. */
+  memo_entrega_id?: string;
 }): Promise<string> {
   const r = await supabase()
     .from("rendiciones")

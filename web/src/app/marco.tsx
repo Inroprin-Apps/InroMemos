@@ -15,6 +15,7 @@ import { entrar, salir, useSesion, type Persona } from "@/lib/sesion";
 import {
   IconoAjustes,
   IconoBandeja,
+  IconoCheck,
   IconoCaja,
   IconoDerecha,
   IconoInicio,
@@ -38,6 +39,8 @@ export type Activo =
   | "memos"
   | "emitir"
   | "memos-config"
+  | "kpis"
+  | "cuentas"
   | "bandeja"
   | "cajas"
   | "catalogos"
@@ -200,6 +203,7 @@ function BarraLateral({
   );
   const porRevisar = (rendiciones ?? []).filter((r) => r.estado === "enviada").length;
   const porAtender = useMemosPorAtender(persona);
+  const permisosMemo = useContextoMemos(persona.correo).contexto?.permisos;
 
   if (contraida) {
     return (
@@ -265,6 +269,18 @@ function BarraLateral({
           <IconoMas className="h-4.25 w-4.25" />
           Emitir memo
         </Link>
+        {(persona.es_administracion || permisosMemo?.verKpis) && (
+          <Link href="/memos/kpis/" className={enlace(activo === "kpis")}>
+            <IconoReportes className="h-4.25 w-4.25" />
+            Métricas y KPIs
+          </Link>
+        )}
+        {(persona.es_administracion || permisosMemo?.verificaCuentas) && (
+          <Link href="/memos/cuentas/" className={enlace(activo === "cuentas")}>
+            <IconoCheck className="h-4.25 w-4.25" />
+            Cuentas por verificar
+          </Link>
+        )}
       </div>
 
       <div className="flex flex-col gap-0.5">

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { bancoCanonico, BANCOS, comprobante, enmascarar, revisarCci, rucValido, soloDigitos, tipoDocumento } from "@/lib/memo-reglas";
+import { bancoCanonico, BANCOS, comprobante, revisarCci, rucValido, soloDigitos, tipoDocumento } from "@/lib/memo-reglas";
 import {
   FORMAS_PAGO,
   agregarLinea,
@@ -19,8 +19,11 @@ import {
   leerDirectorio,
   leerMemo,
   observarMemo,
+  publicarMemo,
   quitarLinea,
+  redactar,
   revisarMemo,
+  verificarCuenta,
   useContextoMemos,
   type CambiosLinea,
   type CambiosMemo,
@@ -37,6 +40,8 @@ import { IconoAprobar, IconoEnviar, IconoMas } from "../../iconos";
 import { ConSesion } from "../../marco";
 import { Aviso, botonPrincipal, botonSecundario, campo } from "../../piezas";
 import { ChipEstado, ChipPago, Encabezado, Papel, Tarjeta } from "../piezas-memo";
+import { Sustentos } from "./sustentos";
+import { PanelTesoreria } from "./tesoreria";
 
 export function VistaMemo() {
   const id = useSearchParams().get("id") ?? "";
@@ -154,12 +159,15 @@ function Memo_({
                   onFalla={setFalla}
                 />
               )}
-              <Sustentos contexto={contexto} tipoCodigo={memo.tipo_codigo} />
+              <Sustentos memoId={memo.id} tipoCodigo={memo.tipo_codigo} contexto={contexto} editable onCambio={revisar} />
             </>
           ) : (
             <>
               <Acciones memo={memo} persona={persona} contexto={contexto} onHecho={onCambio} />
+              {permisos.registraPagos && <PanelTesoreria memo={memo} onHecho={onCambio} />}
+              <Legajo memo={memo} />
               <Resumen memo={memo} lineas={lineas} contexto={contexto} />
+              <Sustentos memoId={memo.id} tipoCodigo={memo.tipo_codigo} contexto={contexto} editable={false} />
             </>
           )}
           <Bitacora eventos={eventos} />
@@ -194,13 +202,51 @@ function Redaccion({ memo, persona, onCambiar }: { memo: Memo; persona: Persona;
   const [copias, setCopias] = useState(memo.copias.join(", "));
   const [directorio, setDirectorio] = useState<{ correo: string; nombre: string }[]>([]);
 
+  const [idea, setIdea] = useState("");
+  const [redactando, setRedactando] = useState(false);
+  const [avisoIA, setAvisoIA] = useState<string | null>(null);
+
   useEffect(() => {
     leerDirectorio().then(setDirectorio, () => setDirectorio([]));
   }, []);
 
+  const conIA = async () => {
+    setRedactando(true);
+    setAvisoIA(null);
+    try {
+      const r = await redactar(memo.id, idea);
+      setAsunto(r.asunto);
+      setCuerpo(r.cuerpo);
+      onCambiar({ asunto: r.asunto, cuerpo: r.cuerpo });
+      setAvisoIA(r.aviso ?? (r.fuente === "IA" ? "Redactado con IA: revísalo y ajústalo a tu gusto." : null));
+    } catch (e) {
+      setAvisoIA((e as Error).message);
+    } finally {
+      setRedactando(false);
+    }
+  };
+
   return (
     <>
       <Tarjeta titulo="¿Qué quieres decir?" nota="Se guarda solo al salir de cada campo">
+        <div className="mb-3.5 rounded-row bg-primary-soft p-3">
+          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.06em] text-primary-strong">
+            Escribe una frase y la IA redacta el asunto y el cuerpo
+          </span>
+          <div className="flex flex-wrap gap-2">
+            <input
+              className={`min-w-50 flex-1 ${campo}`}
+              value={idea}
+              onChange={(e) => setIdea(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && idea.trim().length >= 3 && conIA()}
+              placeholder="pago primas CESCE talleres Medrano"
+            />
+            <button type="button" onClick={conIA} disabled={redactando || idea.trim().length < 3} className={`text-[13px] ${botonPrincipal}`}>
+              {redactando ? "Redactando…" : "Redactar"}
+            </button>
+          </div>
+          {avisoIA && <p className="mt-1.5 text-[12.5px] text-primary-strong">{avisoIA}</p>}
+        </div>
         <label className="block">
           <span className={etiqueta}>Asunto</span>
           <input
@@ -354,6 +400,14 @@ function LineasEditables({
   );
 }
 
+const ESTADO_CUENTA: Record<string, [string, "ok" | "warn" | "danger" | "muted"]> = {
+  coincide: ["Cuenta verificada: coincide con la base", "ok"],
+  pendiente: ["Cuenta nueva: queda pendiente de verificación", "warn"],
+  distinta: ["Distinta a la registrada: la revisa el verificador", "warn"],
+  rechazada: ["Cuenta rechazada por el verificador", "danger"],
+  datos_incompletos: ["Faltan datos de la cuenta", "muted"],
+};
+
 function Chip({ tono, children }: { tono: "ok" | "warn" | "danger" | "muted"; children: React.ReactNode }) {
   const c = {
     ok: "bg-success-soft text-success-strong",
@@ -384,7 +438,21 @@ function LineaEditable({
   const [cci, setCci] = useState("");
   const [comp, setComp] = useState(linea.numero ? `${linea.serie}-${linea.numero}` : "");
   const [ficha, setFicha] = useState<Contribuyente | null>(null);
+  const [errorCuenta, setErrorCuenta] = useState<string | null>(null);
   const guardar = (c: CambiosLinea) => onCambiar(linea, c);
+
+  // La cuenta completa va solo a la función: vuelve enmascarada y con su estado.
+  const verificar = async (datos: { cuenta?: string; cci?: string; banco?: string }) => {
+    setErrorCuenta(null);
+    try {
+      const r = await verificarCuenta(linea.id, datos);
+      setL({ ...l, ...r });
+      setCuenta("");
+      setCci("");
+    } catch (e) {
+      setErrorCuenta((e as Error).message);
+    }
+  };
 
   // La ficha SUNAT del RUC (copia local de INROCONTA): completa la razón
   // social si falta y avisa lo que importa antes de pagar.
@@ -676,10 +744,7 @@ function LineaEditable({
                 onChange={(e) => setCuenta(e.target.value)}
                 onBlur={() => {
                   if (!soloDigitos(cuenta)) return;
-                  const m = enmascarar(cuenta);
-                  setL({ ...l, cuenta: m });
-                  setCuenta("");
-                  guardar({ cuenta: m });
+                  verificar({ cuenta, banco: l.banco });
                 }}
               />
             </label>
@@ -695,48 +760,26 @@ function LineaEditable({
                 onBlur={() => {
                   const r = revisarCci(cci, l.banco);
                   if (!r.valido) return;
-                  const m = enmascarar(cci);
-                  const banco = l.banco || r.banco || "";
-                  setL({ ...l, cci: m, banco });
-                  setCci("");
-                  guardar({ cci: m, banco });
+                  verificar({ cci, banco: l.banco || r.banco || "" });
                 }}
               />
             </label>
           </div>
           {revCci && !revCci.valido && <p className="mt-1 text-[12px] text-danger-strong">{revCci.aviso}</p>}
           {revCci?.aviso && revCci.valido && <p className="mt-1 text-[12px] text-warning-strong">{revCci.aviso}</p>}
+          {l.estado_cuenta !== "sin_verificar" && (
+            <p className="mt-1.5">
+              <Chip tono={ESTADO_CUENTA[l.estado_cuenta]?.[1] ?? "muted"}>{ESTADO_CUENTA[l.estado_cuenta]?.[0] ?? l.estado_cuenta}</Chip>
+            </p>
+          )}
+          {errorCuenta && <p className="mt-1 text-[12px] text-danger-strong">{errorCuenta}</p>}
           <p className="mt-1.5 text-[12px] text-ink-3">
-            La base nunca guarda la cuenta completa. La verificación contra las bases de cuentas de Compras, Importaciones y RRHH llega en
-            la siguiente fase.
+            La cuenta completa solo viaja al servidor para compararla con las bases de cuentas (Compras, Importaciones, RRHH): la base
+            guarda los últimos 4 dígitos y una huella que no se puede revertir.
           </p>
         </>
       )}
     </fieldset>
-  );
-}
-
-function Sustentos({ contexto, tipoCodigo }: { contexto: Contexto; tipoCodigo: string }) {
-  const lista = contexto.catalogos.sustentos.filter((s) => s.tipo_codigo === tipoCodigo);
-  if (!lista.length) return null;
-  return (
-    <Tarjeta titulo="Sustento que pide este tipo" nota="Adjuntarlos llega con el archivo en Drive">
-      <ul className="space-y-1.5 text-[13.5px]">
-        {lista.map((s) => (
-          <li key={s.id} className="flex flex-wrap items-baseline gap-2">
-            <span
-              className={`rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${
-                s.nivel === "obligatorio" ? "bg-danger-soft text-danger-strong" : s.nivel === "condicional" ? "bg-warning-soft text-warning-strong" : "bg-surface-3 text-ink-2"
-              }`}
-            >
-              {s.nivel === "obligatorio" ? "Obligatorio" : s.nivel === "condicional" ? "Si aplica" : "Recomendado"}
-            </span>
-            <span className="text-ink">{s.documento}</span>
-            {s.condicion && <span className="text-ink-3">· {s.condicion}{s.umbral ? ` (desde S/ ${Number(s.umbral).toLocaleString("en-US")})` : ""}</span>}
-          </li>
-        ))}
-      </ul>
-    </Tarjeta>
   );
 }
 
@@ -756,7 +799,8 @@ function Enviar({ memo, revision, esAprobador, onHecho }: { memo: Memo; revision
     setEnviando(true);
     setFalla(null);
     try {
-      await emitirMemo(memo.id);
+      const m = await emitirMemo(memo.id);
+      if (m.estado === "aprobado") publicarMemo(m.id);
       onHecho();
     } catch (e) {
       setFalla((e as Error).message);
@@ -866,7 +910,7 @@ function Acciones({ memo, persona, contexto, onHecho }: { memo: Memo; persona: P
     <Tarjeta titulo={mia === "aprobar" ? "Te toca aprobar" : mia === "cargo" ? "Te toca dar cargo" : "Acciones"}>
       {mia === "aprobar" && (
         <div className="flex flex-wrap gap-2.5">
-          <button type="button" disabled={trabajando} onClick={() => hacer(() => aprobarMemo(memo.id))} className={`inline-flex items-center gap-2 ${botonPrincipal}`}>
+          <button type="button" disabled={trabajando} onClick={() => hacer(async () => (await aprobarMemo(memo.id), publicarMemo(memo.id)))} className={`inline-flex items-center gap-2 ${botonPrincipal}`}>
             <IconoAprobar className="h-4.5 w-4.5" />
             Aprobar
           </button>
@@ -1031,6 +1075,34 @@ function Bitacora({ eventos }: { eventos: Evento[] }) {
           );
         })}
       </ol>
+    </Tarjeta>
+  );
+}
+
+/** El PDF aprobado y el legajo en Drive (los genera el servidor al aprobarse). */
+function Legajo({ memo }: { memo: Memo }) {
+  if (!["aprobado", "enviado", "recibido"].includes(memo.estado)) return null;
+  return (
+    <Tarjeta titulo="PDF y legajo" nota={memo.pdf_drive_id ? "En Drive" : "Se genera en unos minutos"}>
+      {memo.pdf_drive_id ? (
+        <div className="flex flex-wrap gap-2.5">
+          <a href={`https://drive.google.com/file/d/${memo.pdf_drive_id}/view`} target="_blank" rel="noreferrer" className={`text-[13px] ${botonPrincipal}`}>
+            Abrir el PDF aprobado
+          </a>
+          {memo.drive_carpeta_id && (
+            <a
+              href={`https://drive.google.com/drive/folders/${memo.drive_carpeta_id}`}
+              target="_blank"
+              rel="noreferrer"
+              className={`text-[13px] ${botonSecundario}`}
+            >
+              Carpeta del legajo
+            </a>
+          )}
+        </div>
+      ) : (
+        <p className="text-[13px] text-ink-2">El PDF membretado con el sello se genera en Drive en unos minutos, con los sustentos al lado.</p>
+      )}
     </Tarjeta>
   );
 }

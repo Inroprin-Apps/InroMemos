@@ -8,12 +8,15 @@ import {
   guardarUnidad,
   guardarUsuario,
   leerConfiguracion,
+  generarTokenInroPay,
   leerInroconta,
+  leerSalud,
   ponerEnUnidad,
   sacarDeUnidad,
   traerDeInroconta,
   type Correlativo,
   type EstadoInroconta,
+  type Salud,
   type UsuarioMemo,
 } from "@/lib/memos-admin";
 import type { Persona } from "@/lib/sesion";
@@ -99,6 +102,8 @@ function Contenido({ persona }: { persona: Persona }) {
 
       <Personas usuarios={config.usuarios} unidades={unidades} hacer={hacer} />
       <DatosInroconta />
+      <ConexionInroPay />
+      <SaludSistema />
     </div>
   );
 }
@@ -307,6 +312,22 @@ function Personas({
               </span>
               <span className="flex items-center gap-2 text-[12.5px] text-ink-2">
                 <Interruptor
+                  activo={u.verifica_cuentas}
+                  etiqueta={`${u.correo} verifica cuentas bancarias`}
+                  onCambiar={(v) => hacer(() => guardarUsuario(u.correo, { verifica_cuentas: v }), "Guardado.")}
+                />
+                Verifica cuentas
+              </span>
+              <span className="flex items-center gap-2 text-[12.5px] text-ink-2">
+                <Interruptor
+                  activo={u.registra_pagos}
+                  etiqueta={`${u.correo} registra pagos (Tesorería)`}
+                  onCambiar={(v) => hacer(() => guardarUsuario(u.correo, { registra_pagos: v }), "Guardado.")}
+                />
+                Tesorería
+              </span>
+              <span className="flex items-center gap-2 text-[12.5px] text-ink-2">
+                <Interruptor
                   activo={u.interarea_todas}
                   etiqueta={`${u.correo} ve memos de todas las áreas`}
                   onCambiar={(v) => hacer(() => guardarUsuario(u.correo, { interarea_todas: v }), "Guardado.")}
@@ -316,6 +337,72 @@ function Personas({
             </li>
           ))}
         </ul>
+      )}
+    </Tarjeta>
+  );
+}
+
+/** El token con que InroPay lee la cola de pagos y devuelve los estados. */
+function ConexionInroPay() {
+  const [token, setToken] = useState<string | null>(null);
+  const [falla, setFalla] = useState<string | null>(null);
+  return (
+    <Tarjeta titulo="Conexión con InroPay" nota="Análisis y Registro lee la cola de pagos y devuelve los estados">
+      <p className="text-[13px] text-ink-2">
+        InroPay pide <b className="font-semibold">GET …/functions/v1/inropay</b> (la cola, con los 17 campos del RG) y devuelve el estado con{" "}
+        <b className="font-semibold">POST {"{memo, estado, detalle}"}</b>. Las dos con el token en «Authorization: Bearer».
+      </p>
+      {token ? (
+        <p className="mt-3 break-all rounded-row bg-warning-soft px-3 py-2 font-mono text-[12.5px] text-warning-strong">
+          {token}
+          <span className="mt-1 block font-sans">Cópialo ahora en las propiedades del script de InroPay: no se vuelve a mostrar.</span>
+        </p>
+      ) : (
+        <button
+          type="button"
+          className={`mt-3 text-[13px] ${botonPrincipal}`}
+          onClick={() =>
+            window.confirm("¿Generar un token nuevo? El anterior deja de funcionar.") &&
+            generarTokenInroPay().then(setToken, (e: Error) => setFalla(e.message))
+          }
+        >
+          Generar token de InroPay
+        </button>
+      )}
+      {falla && <p className="mt-2 text-[13px] text-danger-strong">{falla}</p>}
+    </Tarjeta>
+  );
+}
+
+/** Correos por salir, errores y lo último que hicieron las funciones del sistema. */
+function SaludSistema() {
+  const [s, setS] = useState<Salud | null>(null);
+  useEffect(() => {
+    leerSalud().then(setS, () => setS(null));
+  }, []);
+  return (
+    <Tarjeta titulo="Salud del sistema" nota="Correos y tareas automáticas">
+      {!s ? (
+        <span className="hueco h-12 w-full" />
+      ) : (
+        <>
+          <p className="text-[13.5px] text-ink">
+            Correos por salir: <b>{s.pendientes}</b> · con error: <b className={s.errores ? "text-danger-strong" : ""}>{s.errores}</b>
+          </p>
+          {s.ultimoError && <p className="mt-1 text-[12.5px] text-danger-strong">Último error: {s.ultimoError}</p>}
+          <ul className="mt-3 divide-y divide-line text-[12.5px]">
+            {s.corridas.map((c) => (
+              <li key={c.id} className="flex flex-wrap gap-x-3 py-1.5">
+                <span className="font-semibold text-ink">{c.job}</span>
+                <span className={c.resultado === "ERROR" ? "text-danger-strong" : "text-ink-2"}>
+                  {c.resultado ?? "corriendo"} {c.filas != null ? `· ${c.filas} filas` : ""}
+                </span>
+                <span className="text-ink-3">{new Date(c.iniciada_en).toLocaleString("es-PE", { timeZone: "America/Lima", dateStyle: "short", timeStyle: "short" })}</span>
+                {c.error && <span className="w-full text-danger-strong">{c.error}</span>}
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </Tarjeta>
   );

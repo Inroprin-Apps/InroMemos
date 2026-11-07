@@ -84,6 +84,8 @@ export type Memo = {
   valoracion: number | null;
   motivo_anulacion: string;
   rendicion_id: string | null;
+  drive_carpeta_id?: string | null;
+  pdf_drive_id?: string | null;
   creado_en: string;
   actualizado_en: string;
 };
@@ -132,6 +134,10 @@ export type MisPermisos = {
   /** Las unidades donde aprueba (jefe o suplente). */
   aprueba: number[];
   verKpis: boolean;
+  /** Decide las cuentas bancarias nuevas o distintas. */
+  verificaCuentas: boolean;
+  /** Tesorería: registra el estado del pago. */
+  registraPagos: boolean;
 };
 
 function exigir<T>({ data, error }: { data: T | null; error: unknown }): T {
@@ -176,11 +182,17 @@ export async function leerMisPermisos(correo: string, unidades: Unidad[]): Promi
   const db = supabase();
   const [miembro, usuario] = await Promise.all([
     db.from("miembros_unidad").select("unidad_id").eq("correo", correo),
-    db.from("usuarios_memo").select("ver_kpis").eq("correo", correo).maybeSingle(),
+    db.from("usuarios_memo").select("ver_kpis, verifica_cuentas, registra_pagos").eq("correo", correo).maybeSingle(),
   ]);
   const aprueba = unidades.filter((u) => u.jefe_correo === correo || u.suplente_correo === correo).map((u) => u.id);
   const emite = [...new Set([...exigir(miembro).map((m) => m.unidad_id as number), ...aprueba])];
-  return { emite, aprueba, verKpis: Boolean(usuario.data?.ver_kpis) };
+  return {
+    emite,
+    aprueba,
+    verKpis: Boolean(usuario.data?.ver_kpis),
+    verificaCuentas: Boolean(usuario.data?.verifica_cuentas),
+    registraPagos: Boolean(usuario.data?.registra_pagos),
+  };
 }
 
 export async function leerDirectorio(): Promise<{ correo: string; nombre: string }[]> {
@@ -204,7 +216,7 @@ function avisar(nuevo: Estado) {
 // Lo que el panel necesita de cada memo: todo menos el cuerpo, que es lo que
 // más pesa y solo se lee al abrir uno («pedir menos», como INROCONTA).
 const COLUMNAS_PANEL =
-  "id, unidad_id, empresa_id, tipo_codigo, proyecto_id, anio, numero, numero_visible, id_tecnico, asunto, emisor_id, emisor_nombre, destinatario_correo, destinatario_nombre, copias, estado, estado_pago, confidencialidad, requiere_pago, total, moneda, version, ultima_observacion, aprobado_por, aprobado_en, codigo_sello, emitido_en, enviado_en, recibido_en, valoracion, motivo_anulacion, rendicion_id, creado_en, actualizado_en";
+  "pdf_drive_id, drive_carpeta_id, id, unidad_id, empresa_id, tipo_codigo, proyecto_id, anio, numero, numero_visible, id_tecnico, asunto, emisor_id, emisor_nombre, destinatario_correo, destinatario_nombre, copias, estado, estado_pago, confidencialidad, requiere_pago, total, moneda, version, ultima_observacion, aprobado_por, aprobado_en, codigo_sello, emitido_en, enviado_en, recibido_en, valoracion, motivo_anulacion, rendicion_id, creado_en, actualizado_en";
 
 /** Supabase entrega a lo más 1000 filas por pedido: se piden por páginas hasta la última. */
 const PAGINA = 1000;
@@ -428,4 +440,135 @@ export async function fichaRuc(ruc: string): Promise<Contribuyente | null> {
     .eq("ruc", ruc)
     .maybeSingle();
   return (data as Contribuyente) ?? null;
+}
+
+
+// ---------------------------------------------------------------------------
+// Funciones del servidor: IA, Drive (PDF y cuentas)
+// ---------------------------------------------------------------------------
+
+async function invocar<T>(funcion: string, cuerpo: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase().functions.invoke(funcion, { body: cuerpo });
+  if (error) {
+    const detalle = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    throw new Error(detalle?.error ?? error.message ?? "No se pudo completar.");
+  }
+  return data as T;
+}
+
+export type Redaccion = { asunto: string; cuerpo: string; fuente: "IA" | "PLANTILLA"; aviso?: string };
+
+/** Asunto y cuerpo de una vez, con la IA (o la plantilla si la IA no responde). */
+export const redactar = (memoId: string, idea: string) => invocar<Redaccion>("ia", { accion: "redactar", memo_id: memoId, idea });
+
+/** El PDF membretado y el legajo en Drive (también lo hace el reloj cada 5 minutos). */
+export const publicarMemo = (memoId: string) =>
+  invocar<{ publicado: boolean; pdf?: string }>("drive", { accion: "memo", memo_id: memoId }).catch(() => null);
+
+export type CuentaVerificada = { banco: string; cuenta: string; cci: string; estado_cuenta: string };
+
+/** La cuenta completa viaja solo hasta la función: vuelve enmascarada y con su estado. */
+export const verificarCuenta = (lineaId: string, datos: { cuenta?: string; cci?: string; banco?: string }) =>
+  invocar<CuentaVerificada>("drive", { accion: "verificar_cuenta", linea_id: lineaId, ...datos });
+
+// ---------------------------------------------------------------------------
+// Sustentos
+// ---------------------------------------------------------------------------
+
+export type MemoSustento = {
+  id: string;
+  memo_id: string;
+  sustento_id: number | null;
+  nombre: string;
+  ruta: string;
+  tipo_mime: string;
+  tamano: number;
+  descartado: boolean;
+  drive_id: string | null;
+  lectura: { avisos?: string[]; total?: number | null; ruc_emisor?: string | null; numero?: string | null };
+  creado_en: string;
+};
+
+export async function leerSustentos(memoId: string): Promise<MemoSustento[]> {
+  return exigir(
+    await supabase().from("memo_sustentos").select("*").eq("memo_id", memoId).eq("descartado", false).order("creado_en"),
+  ) as MemoSustento[];
+}
+
+export async function subirSustento(memoId: string, archivo: File, sustentoId: number | null): Promise<MemoSustento> {
+  const limpio = archivo.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9._-]+/g, "_").slice(-80);
+  const ruta = `${memoId}/${crypto.randomUUID()}-${limpio}`;
+  const subida = await supabase().storage.from("sustentos").upload(ruta, archivo, { contentType: archivo.type });
+  if (subida.error) throw new Error(`No se pudo subir ${archivo.name}: ${subida.error.message}`);
+  const fila = await supabase()
+    .from("memo_sustentos")
+    .insert({ memo_id: memoId, sustento_id: sustentoId, nombre: archivo.name.slice(0, 200), ruta, tipo_mime: archivo.type, tamano: archivo.size })
+    .select()
+    .single();
+  return exigir(fila) as MemoSustento;
+}
+
+export async function descartarSustento(id: string): Promise<void> {
+  const { error } = await supabase().from("memo_sustentos").update({ descartado: true }).eq("id", id);
+  if (error) throw new FallaDeBase(error);
+}
+
+/** La IA lee el sustento y lo cruza con las líneas (RUC, número, monto). */
+export const leerSustentoIA = (id: string) =>
+  invocar<{ lectura: MemoSustento["lectura"] }>("ia", { accion: "leer_sustento", sustento_id: id });
+
+export async function enlaceSustento(ruta: string): Promise<string> {
+  const { data, error } = await supabase().storage.from("sustentos").createSignedUrl(ruta, 300);
+  if (error || !data) throw new Error("No se pudo abrir el archivo.");
+  return data.signedUrl;
+}
+
+// ---------------------------------------------------------------------------
+// Pago, rendición y DNI
+// ---------------------------------------------------------------------------
+
+export const registrarEstadoPago = (id: string, estado: EstadoPago, detalle: string) =>
+  transicion("registrar_estado_pago", { mid: id, estado, detalle });
+
+export type MemoParaRendir = { id: string; numero_visible: string; asunto: string; empresa_id: number; monto: number; moneda: string };
+
+export async function memosParaRendir(): Promise<MemoParaRendir[]> {
+  return exigir(await supabase().rpc("memos_para_rendir")) as MemoParaRendir[];
+}
+
+export async function miDni(): Promise<string | null> {
+  const { data } = await supabase().rpc("mi_dni");
+  return (data as string | null) ?? null;
+}
+
+export async function guardarMiDni(dni: string): Promise<void> {
+  const { error } = await supabase().rpc("guardar_mi_dni", { dni });
+  if (error) throw new FallaDeBase(error);
+}
+
+// ---------------------------------------------------------------------------
+// KPIs
+// ---------------------------------------------------------------------------
+
+export type Kpis = {
+  emitidos: number;
+  anulados: number;
+  pendientes: number;
+  observados_alguna_vez: number;
+  a_la_primera_pct: number | null;
+  horas_aprobacion: number | null;
+  horas_aprobacion_mediana: number | null;
+  horas_cargo: number | null;
+  cargo_en_meta_pct: number | null;
+  meta_horas: number;
+  valoracion: number | null;
+  valoraciones: Record<string, number>;
+  monto_pen: number;
+  pagados: number;
+  por_area: { area: string; empresa: string; emitidos: number; pendientes: number; observados: number; monto: number }[];
+  por_semana: { semana: string; emitidos: number }[];
+};
+
+export async function leerKpis(desde: string, hasta: string): Promise<Kpis> {
+  return exigir(await supabase().rpc("kpis_memos", { desde, hasta })) as Kpis;
 }

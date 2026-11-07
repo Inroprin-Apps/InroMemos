@@ -66,33 +66,48 @@ regla de que **el servidor decide; la pantalla solo muestra**.
 
 ---
 
-## 4. Para ponerlo en marcha (en orden)
+## 4. Ya en producción (7-nov-2026)
 
-1. **Aplicar las 3 migraciones** en Supabase (`memos`, `…02_memos_catalogos`, `…03_inroconta`) y publicar la función `inroconta`.
-2. **Token de INROCONTA** (en el repositorio de INROCONTA): `pnpm apps:token inroscan`; la entrada `inroscan=<sha256>` va a `APPS_DATOS_TOKENS` en Vercel (y redesplegar); el token y la dirección de INROCONTA van a los secretos de Supabase `INROCONTA_TOKEN` e `INROCONTA_URL`.
-3. **Configurar** en «Áreas y permisos de memos»: jefe y suplente de cada área, quién emite dónde, KPIs e interárea, y la **semilla** de cada serie (Finanzas 28, Administración 213, RRHH 624, Compras Nacionales 5, COMEX 1, INROPLAS Finanzas 5 al 6-oct; confirmar con Drive).
-4. **Traer ahora** los datos de INROCONTA y emitir un memo de prueba.
+- **Base:** las migraciones de memos, catálogos, INROCONTA, ciclo completo y reloj están aplicadas en Supabase.
+- **Funciones:** `drive` (PDF y legajo del memo, bandeja de correos, cuentas), `ia` (redacción y lectura de sustentos), `inroconta` e `inropay`, desplegadas.
+- **Reloj (pg_cron):** cada 5 min envía la bandeja y genera los PDF que falten; cada hora encola recordatorios (lun–vie 8–18 h); a las 6:10 trae INROCONTA y a las 6:20 copia las bases de cuentas.
+- **Claves:** la de las huellas de cuentas y el token del reloj los generó la base (tabla `integraciones` y Vault): nadie los vio.
 
----
+### Roles (todos con cuenta @inroprin.com)
 
-## 5. Lo que sigue
+| Rol | Qué ve | Qué hace |
+|---|---|---|
+| Persona | Sus rendiciones; los memos donde participa o le entregan dinero (solo sus líneas) | Rinde; da cargo si es destinataria |
+| Emisor | Lo de sus áreas (menos lo confidencial) | Emite, corrige, adjunta sustentos |
+| Jefe / suplente | Todo lo de su área | Aprueba, observa, anula |
+| Interárea | Lo NORMAL de otras áreas | — |
+| Ver KPIs | Métricas y KPIs | — |
+| Verifica cuentas | Cuentas por verificar | Verifica o rechaza cuentas nuevas o distintas |
+| Tesorería | Memos de pago aprobados de todas las áreas (no confidenciales) | Registra el estado del pago |
+| Administración | Todo | Configura áreas, personas, roles y conexiones |
+
+## 5. Lo que te toca hacer (una vez)
+
+1. **Publicar la app:** unir la rama a `main` (pull request) para que se publique en GitHub Pages.
+2. **Reconectar Drive** en Administración › Drive, para que la cuenta conectada dé también el permiso de **Gmail** (los avisos salen de esa cuenta). En Google Cloud (proyecto `inroscan-contabilidad`) activar **Gmail API** y **Google Sheets API**.
+3. **Correo real:** hasta que el secreto de Supabase `CORREO_MODO` diga `real`, todo correo va solo a la cuenta conectada, con una franja que dice a quién iba.
+4. **Configurar** en «Áreas y permisos de memos»: jefes y suplentes, quién emite dónde, roles (KPIs, interárea, verificador, Tesorería) y la semilla de cada serie.
+5. **INROCONTA:** en su repositorio, `pnpm apps:token inroscan`; la huella va a `APPS_DATOS_TOKENS` en Vercel; el token y la dirección, a los secretos de Supabase `INROCONTA_TOKEN` e `INROCONTA_URL`.
+6. **Bases de cuentas:** cargar en la tabla `bases_cuentas` el ID de cada hoja (Nacional, Importaciones, RRHH) y su pestaña; la cuenta conectada a Drive tiene que poder leerlas.
+7. **InroPay:** en «Áreas y permisos de memos» › Conexión con InroPay, generar el token y ponerlo en las propiedades del script de InroPay (GET la cola; POST `{memo, estado, detalle}`).
+
+## 6. Lo que sigue
 
 | # | Qué | Depende de |
 |---|---|---|
-| 1 | **PDF membretado en Drive** y legajo por memo (reusar la función `drive` y su carpeta madre) | Drive conectado (CONTEXTO §5.1) |
-| 2 | **Correo**: aviso al aprobador, envío al destinatario con «Dar cargo», recordatorios cada hora (meta 3 h) con el reloj de Supabase | Decidir la cuenta que envía (delegación de dominio o una cuenta del sistema) |
-| 3 | **Redacción con Gemini** (asunto + cuerpo de una vez; plantilla si falla): la clave ya está en Supabase | — |
-| 4 | **Sustentos adjuntos** por memo y su lectura con IA (cruzar RUC, número y monto) | 1 |
-| 5 | **Verificación de cuentas** contra las 3 bases (Nacionales, Importaciones, RRHH) y alta pendiente de verificación | Acceso de la cuenta de Drive a esas hojas |
-| 6 | **Cola hacia InroPay** Análisis y Registro (17 campos de `MAPEO_RG`) y vuelta de estados de pago (registrado, programado, pagado) → la rendición pasa a repuesta/liquidada sola | Contrato con quien mantiene InroPay |
-| 7 | **KPIs** (tiempos, aprobados a la primera, felicidad del cargo) y **Salud** como panel lateral (las `corridas`) | — |
-| 8 | **Servicio central de correlativos** para Fianzas e InroPay Programación (un `doPost` que pide número a la base) | Fase de pruebas acordada con Finanzas |
-| 9 | Planilla: memo por concepto y centro de costo, lote con observación por memo | La planilla nueva de RRHH |
-| 10 | Unir `proyectos` con los **centros de costo** de INROCONTA (código `PROY-2025-189`, código CONCAR) | — |
+| 1 | Membrete por empresa (logos de INROPLAS, GECOR, consorcios) en el PDF | Logos en el repositorio |
+| 2 | Servicio central de correlativos para Fianzas e InroPay Programación | Fase de pruebas con Finanzas |
+| 3 | Planilla: memo por concepto y centro de costo, lote con observación por memo | La planilla nueva de RRHH |
+| 4 | Escribir las cuentas nuevas verificadas en las bases (hoy quedan en InroScan) | Que Finanzas lo apruebe |
+| 5 | Unir `proyectos` con los centros de costo de INROCONTA | — |
 
 ### Decisiones que siguen abiertas
 
 - Códigos cortos de empresa y tipos de memo marcados «propuesto».
-- Quién emite y quién aprueba en cada área (lo carga administración).
 - Si se importan los 204 memos históricos del respaldo de foto-grama.
-- INROCONTA v2 también diseña memos de viáticos (`006_viaticos.sql`): **conviene acordar que memos y rendiciones vivan en InroScan** y que INROCONTA los lea, para no tener dos sistemas con lo mismo.
+- Acordar con INROCONTA que memos y viáticos vivan en InroScan (su v2 trae `006_viaticos.sql` del piloto INRO VIÁTICOS, parado desde el 8-oct).
