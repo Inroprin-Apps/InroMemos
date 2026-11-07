@@ -236,7 +236,10 @@ async function leerTodos(): Promise<Memo[]> {
   }
 }
 
+let leidoEn = 0;
+
 export function recargarMemos(): Promise<void> {
+  leidoEn = Date.now();
   enCurso = (async () => {
     try {
       avisar({ memos: await leerTodos(), error: null });
@@ -249,10 +252,34 @@ export function recargarMemos(): Promise<void> {
   return enCurso;
 }
 
+// Lo que hacen otras personas (emitir, aprobar, dar cargo) llega sin recargar
+// la página: al volver a la pestaña y cada minuto mientras está a la vista.
+// Nunca más de una lectura cada 10 segundos.
+const CADA = 60_000;
+const MINIMO = 10_000;
+let reloj: ReturnType<typeof setInterval> | null = null;
+
+function refrescarSiToca() {
+  if (document.visibilityState === "visible" && !enCurso && Date.now() - leidoEn >= MINIMO) recargarMemos();
+}
+
 function suscribir(f: () => void) {
   oyentes.add(f);
-  if (!actual.memos && !enCurso) recargarMemos();
-  return () => oyentes.delete(f);
+  if (!enCurso && (!actual.memos || Date.now() - leidoEn >= MINIMO)) recargarMemos();
+  if (oyentes.size === 1) {
+    document.addEventListener("visibilitychange", refrescarSiToca);
+    window.addEventListener("focus", refrescarSiToca);
+    reloj = setInterval(refrescarSiToca, CADA);
+  }
+  return () => {
+    oyentes.delete(f);
+    if (oyentes.size === 0) {
+      document.removeEventListener("visibilitychange", refrescarSiToca);
+      window.removeEventListener("focus", refrescarSiToca);
+      if (reloj) clearInterval(reloj);
+      reloj = null;
+    }
+  };
 }
 
 const sinDatos: Estado = { memos: null, error: null };
