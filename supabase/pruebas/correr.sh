@@ -36,3 +36,4 @@ for f in "$migraciones"/*.sql; do
 done
 correr "$aqui/permisos.sql"
 correr "$aqui/memos.sql"
+correr "$aqui/ciclo.sql"

@@ -190,3 +190,76 @@ export class Drive {
     );
   }
 }
+
+const DOC = "application/vnd.google-apps.document";
+
+/** Un documento de Google armado desde HTML (Drive lo convierte al subirlo). */
+export async function docDesdeHtml(
+  pedir: Pedir,
+  token: string,
+  nombre: string,
+  padre: string,
+  html: string,
+): Promise<string> {
+  const limite = `inroscan${crypto.randomUUID()}`;
+  const cuerpo = [
+    `--${limite}`,
+    "Content-Type: application/json; charset=UTF-8",
+    "",
+    JSON.stringify({ name: nombre, parents: [padre], mimeType: DOC }),
+    `--${limite}`,
+    "Content-Type: text/html; charset=UTF-8",
+    "",
+    html,
+    `--${limite}--`,
+  ].join("\r\n");
+  const r = await pedir(`${SUBIDA}?uploadType=multipart&supportsAllDrives=true&fields=id`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": `multipart/related; boundary=${limite}` },
+    body: cuerpo,
+  });
+  if (!r.ok) {
+    throw new ErrorDeGoogle(
+      r.status,
+      `No se pudo crear el documento del memo (${r.status}): ${(await r.text()).slice(0, 300)}`,
+    );
+  }
+  return (await r.json()).id;
+}
+
+/** Envía un correo ya armado (RFC 2822) desde la cuenta conectada. */
+export async function enviarCorreo(pedir: Pedir, token: string, crudo: string): Promise<string> {
+  const raw = btoa(String.fromCharCode(...new TextEncoder().encode(crudo)))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const r = await pedir("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ raw }),
+  });
+  if (r.status === 403) {
+    throw new ErrorDeGoogle(
+      403,
+      "Google no deja enviar correos con esta conexión: reconecta Drive en Administración › Drive para dar el permiso de Gmail.",
+    );
+  }
+  if (!r.ok) {
+    throw new ErrorDeGoogle(r.status, `Gmail rechazó el correo (${r.status}): ${(await r.text()).slice(0, 300)}`);
+  }
+  return (await r.json()).id;
+}
+
+/** Las celdas de una pestaña de Google Sheets, como texto. */
+export async function valoresDeHoja(pedir: Pedir, token: string, hoja: string, pestana: string): Promise<string[][]> {
+  const rango = encodeURIComponent(`'${pestana.replace(/'/g, "''")}'`);
+  const r = await pedir(
+    `https://sheets.googleapis.com/v4/spreadsheets/${hoja}/values/${rango}?valueRenderOption=FORMATTED_VALUE`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!r.ok) {
+    throw new ErrorDeGoogle(
+      r.status,
+      `No se pudo leer la hoja ${pestana} (${r.status}): ${(await r.text()).slice(0, 300)}`,
+    );
+  }
+  return ((await r.json()).values ?? []) as string[][];
+}

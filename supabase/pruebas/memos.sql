@@ -15,6 +15,15 @@
 \o /dev/null
 set client_min_messages = notice;
 
+-- Adjunta (en la base) los sustentos obligatorios del tipo del memo.
+create function pruebas.sustentar(mid uuid) returns void language sql as $$
+  insert into public.memo_sustentos (memo_id, sustento_id, nombre, ruta, tipo_mime, tamano)
+  select mid, st.id, st.documento || '.pdf', mid::text || '/' || st.id || '.pdf', 'application/pdf', 1000
+    from public.sustentos_tipo st join public.memos m on m.id = mid and m.tipo_codigo = st.tipo_codigo
+   where st.nivel = 'obligatorio'
+$$;
+grant execute on function pruebas.sustentar(uuid) to public;
+
 \echo '\n· Memos: configuración de administración'
 
 reset role;
@@ -90,6 +99,9 @@ select pruebas.falla(format($$update lineas_pago set cuenta = '19112345678021' w
   'la base no guarda una cuenta completa');
 update lineas_pago set banco = 'BCP', cuenta = '••••8021' where id = :'l1';
 
+select pruebas.ok((select count(*) = 2 from revisar_memo(:'m1') where mensaje like 'Falta adjuntar:%'),
+  'los sustentos obligatorios del tipo (comprobante y acta) se exigen');
+select pruebas.sustentar(:'m1');
 select pruebas.ok((select count(*) = 0 from revisar_memo(:'m1') where nivel = 'error'), 'ya no le falta nada');
 select emitir_memo(:'m1');
 select pruebas.ok((
@@ -220,6 +232,7 @@ insert into lineas_pago (memo_id, empresa_pagadora_id, beneficiario_doc, benefic
 values (:'m8', :inroprin, '20131312955', 'Fantasma', :concepto, 450, 'FT', 'F001', '1',
         (now() at time zone 'America/Lima')::date)
 returning id as l8 \gset
+select pruebas.sustentar(:'m8');
 select pruebas.falla(format($$select emitir_memo(%L)$$, :'m8'),
   'a un proveedor en la lista SSCO de SUNAT no se le paga');
 

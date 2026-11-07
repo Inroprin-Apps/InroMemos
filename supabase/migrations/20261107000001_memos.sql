@@ -465,9 +465,11 @@ begin
             coalesce((select coalesce(nullif(p.nombre, ''), p.correo) from public.personas p where p.id = auth.uid()), ''),
             coalesce(nullif(current_setting('memos.detalle', true), '')::jsonb, '{}'));
   elsif new.estado_pago is distinct from old.estado_pago then
-    insert into public.memo_eventos (memo_id, tipo, estado_antes, estado_despues, actor, detalle)
+    insert into public.memo_eventos (memo_id, tipo, estado_antes, estado_despues, actor, actor_nombre, detalle)
     values (new.id, 'pago', old.estado, new.estado, auth.uid(),
-            jsonb_build_object('antes', old.estado_pago, 'despues', new.estado_pago));
+            coalesce((select coalesce(nullif(p.nombre, ''), p.correo) from public.personas p where p.id = auth.uid()), ''),
+            jsonb_build_object('antes', old.estado_pago, 'despues', new.estado_pago)
+              || coalesce(nullif(current_setting('memos.detalle', true), '')::jsonb, '{}'));
   end if;
   return null;
 end $$;
@@ -487,6 +489,12 @@ begin
   select * into m from public.memos where id = fila.memo_id;
   if tg_op = 'UPDATE' and new.memo_id <> old.memo_id then
     raise exception 'Una línea no se cambia de memo.';
+  end if;
+  -- Marcar el estado de la cuenta (lo hace la verificación) no cambia lo que
+  -- se pide pagar: vale en cualquier estado del memo. (La clave es generada:
+  -- en un trigger BEFORE todavía viene vacía, por eso se excluye.)
+  if tg_op = 'UPDATE' and (to_jsonb(new) - 'estado_cuenta' - 'clave') = (to_jsonb(old) - 'estado_cuenta' - 'clave') then
+    return new;
   end if;
   if auth.uid() is not null then
     if m.estado not in ('borrador', 'observado') then
@@ -568,6 +576,23 @@ begin
 
   select count(*), count(distinct x.moneda) into cuantas, monedas
     from public.lineas_pago x where x.memo_id = mid;
+
+  -- Sustentos (tabla memo_sustentos, migración …_memos_ciclo): obligatorio
+  -- bloquea; condicional con umbral bloquea si el total lo pasa; el resto avisa.
+  return query
+    select case when st.nivel = 'obligatorio'
+                  or (st.nivel = 'condicional' and st.umbral is not null
+                      and (select coalesce(sum(x.monto), 0) from public.lineas_pago x where x.memo_id = mid) > st.umbral)
+                then 'error' else 'aviso' end,
+           case when st.nivel = 'obligatorio' then format('Falta adjuntar: %s.', st.documento)
+                when st.umbral is not null then format('Falta adjuntar: %s (%s).', st.documento, st.condicion)
+                else format('Si aplica, adjunta: %s%s.', st.documento, coalesce(' — ' || nullif(st.condicion, ''), '')) end
+      from public.sustentos_tipo st
+     where st.tipo_codigo = m.tipo_codigo and st.activo and st.nivel <> 'recomendado'
+       and not exists (select 1 from public.memo_sustentos d
+                        where d.memo_id = mid and d.sustento_id = st.id and not d.descartado)
+       and (st.nivel <> 'condicional' or st.umbral is null
+            or (select coalesce(sum(x.monto), 0) from public.lineas_pago x where x.memo_id = mid) > st.umbral);
 
   if not t.lleva_pago then
     if cuantas > 0 then
@@ -680,10 +705,10 @@ begin
         end if;
       end if;
     end if;
-    if l.estado_cuenta = 'distinta' then
-      return query select 'aviso', format('Línea %s: la cuenta no es la registrada para %s. Se verifica antes de pagar.', l.orden, l.beneficiario);
-    end if;
   end loop;
+
+  -- Cuentas bancarias (migración …_memos_ciclo): rechazada bloquea; nueva o distinta avisa.
+  return query select * from public.revisar_cuentas(mid);
 end $$;
 
 -- ---------------------------------------------------------------------------
@@ -750,6 +775,8 @@ begin
     anio = m.anio, numero = m.numero, numero_visible = m.numero_visible,
     id_tecnico = m.id_tecnico, emitido_en = m.emitido_en,
     version = m.version + 1,
+    -- Observado por Análisis y Registro: al corregir vuelve a la cola de pago.
+    estado_pago = case when m.estado_pago = 'observado_analisis' then null else m.estado_pago end,
     total = coalesce((select sum(x.monto) from public.lineas_pago x where x.memo_id = mid), 0),
     moneda = coalesce((select min(x.moneda) from public.lineas_pago x where x.memo_id = mid), m.moneda),
     estado = case when auto then 'aprobado'::public.estado_memo else 'pendiente'::public.estado_memo end,
