@@ -88,11 +88,36 @@ regla de que **el servidor decide; la pantalla solo muestra**.
 
 ## 5. Lo que te toca hacer (una vez)
 
+### Avance (al 7-nov-2026) — retomar el lunes 9-nov en el paso 5
+
+| # | Paso | Estado |
+|---|---|---|
+| 1 | Publicar la app (unir a `main`) | ✅ Hecho |
+| 2 | Gmail API y Sheets API activadas; Drive reconectado con permiso de Gmail | ✅ Hecho |
+| 3 | Memo de prueba completo en el área **INROPRIN · Pruebas (InroScan)** (`PRUEBAS`): emitir → aprobar → PDF en Drive → correos → cargo | ✅ Hecho (`001-2026-PRUEBAS`, quedó «Recibido») |
+| 4 | Secreto `CORREO_MODO = real` en Supabase | ✅ Hecho |
+| 5 | **INROCONTA** | ⏸️ **Pendiente: el lunes.** El Vercel de INROCONTA lo administra el practicante de Sistemas; hay que hacerlo con él |
+| 6 | Bases de cuentas (IDs de las 3 hojas) | Pendiente: confirmar los IDs antes de cargarlos |
+| 7 | Token de InroPay | Pendiente |
+
+Quedó abierto en la prueba:
+
+- Mirar el PDF regenerado de `001-2026-PRUEBAS` (membrete completo, sin bordes de planilla) y ajustar si Google lo dibuja raro.
+- Probar con un segundo memo que, con correo real, cada aviso llegue a su bandeja sin «[PRUEBA]».
+- Decidir si se agrega el interruptor **Activo** para desactivar personas en «Áreas y permisos de memos» (hoy no se pueden quitar).
+- Al terminar las pruebas: desactivar el área `PRUEBAS` y cargar las personas, jefes y semillas reales.
+
+### Los pasos
+
 1. **Publicar la app:** unir la rama a `main` (pull request) para que se publique en GitHub Pages.
 2. **Reconectar Drive** en Administración › Drive, para que la cuenta conectada dé también el permiso de **Gmail** (los avisos salen de esa cuenta). En Google Cloud (proyecto `inroscan-contabilidad`) activar **Gmail API** y **Google Sheets API**.
 3. **Correo real:** hasta que el secreto de Supabase `CORREO_MODO` diga `real`, todo correo va solo a la cuenta conectada, con una franja que dice a quién iba.
 4. **Configurar** en «Áreas y permisos de memos»: jefes y suplentes, quién emite dónde, roles (KPIs, interárea, verificador, Tesorería) y la semilla de cada serie.
-5. **INROCONTA:** en su repositorio, `pnpm apps:token inroscan`; la huella va a `APPS_DATOS_TOKENS` en Vercel; el token y la dirección, a los secretos de Supabase `INROCONTA_TOKEN` e `INROCONTA_URL`.
+5. **INROCONTA**, en tres partes:
+   - A. En el repositorio de INROCONTA (PowerShell): `pnpm apps:token inroscan`. Imprime el **token** y una línea `inroscan=<sha256>`. No se pegan en chats.
+   - B. En el proyecto de INROCONTA en Vercel › Settings › Environment Variables: a `APPS_DATOS_TOKENS` se le **agrega** `,inroscan=<sha256>` (sin borrar `carga-concar=…`), se guarda y se hace **Redeploy**.
+   - C. En Supabase (foto-grama) › Edge Functions › Secrets: `INROCONTA_TOKEN` = el token; `INROCONTA_URL` = la dirección de INROCONTA (`https://….vercel.app`, sin barra al final).
+   - Comprobar: «Áreas y permisos de memos» › Datos de INROCONTA › **Traer ahora**; los contadores dejan de estar en 0.
 6. **Bases de cuentas:** cargar en la tabla `bases_cuentas` el ID de cada hoja (Nacional, Importaciones, RRHH) y su pestaña; la cuenta conectada a Drive tiene que poder leerlas.
 7. **InroPay:** en «Áreas y permisos de memos» › Conexión con InroPay, generar el token y ponerlo en las propiedades del script de InroPay (GET la cola; POST `{memo, estado, detalle}`).
 
