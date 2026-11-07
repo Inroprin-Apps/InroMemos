@@ -50,8 +50,8 @@ export function MisRendiciones({ persona }: { persona: Persona }) {
     <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-tinta">Mis rendiciones</h1>
-          <p className="mt-1 text-texto-2">Tus memos de viáticos y las cajas chicas que administras.</p>
+          <h1 className="text-2xl font-bold text-ink">Mis rendiciones</h1>
+          <p className="mt-1 text-ink-2">Tus memos de viáticos y las cajas chicas que administras.</p>
         </div>
         <button type="button" onClick={() => setNueva(true)} className={botonPrincipal}>
           Nueva rendición
@@ -61,7 +61,7 @@ export function MisRendiciones({ persona }: { persona: Persona }) {
       {error && <Aviso>{error}</Aviso>}
       {sinSenal && <Aviso tono="aviso">Sin conexión: ves lo último guardado en este equipo.</Aviso>}
       {rendiciones == null && !error && (
-        <p className="text-texto-3" role="status">
+        <p className="text-ink-3" role="status">
           Cargando…
         </p>
       )}
@@ -85,7 +85,7 @@ export function MisRendiciones({ persona }: { persona: Persona }) {
       )}
 
       {rendiciones && (
-        <section className="rounded-grande bg-superficie p-4 shadow-sm">
+        <section className="rounded-card border border-control bg-surface p-4">
           <div role="tablist" aria-label="Estado" className="flex flex-wrap gap-1.5">
             <Pestanita activa={vista === "abiertas"} onClick={() => setPestana("abiertas")}>
               Abiertas · {abiertas.length}
@@ -99,11 +99,11 @@ export function MisRendiciones({ persona }: { persona: Persona }) {
           </div>
 
           {lista.length === 0 ? (
-            <p className="mt-4 text-texto-2">
+            <p className="mt-4 text-ink-2">
               {vista === "abiertas" ? (
                 <>
                   No tienes rendiciones abiertas. Empieza con{" "}
-                  <button type="button" onClick={() => setNueva(true)} className="font-semibold text-acento-texto underline">
+                  <button type="button" onClick={() => setNueva(true)} className="font-semibold text-primary-strong underline">
                     Nueva rendición
                   </button>{" "}
                   cuando recibas el dinero de un viaje o repongas una caja.
@@ -116,10 +116,10 @@ export function MisRendiciones({ persona }: { persona: Persona }) {
             </p>
           ) : (
             <>
-              <div className="mt-3 hidden overflow-x-auto rounded-chico border border-borde md:block">
+              <div className="mt-3 hidden overflow-x-auto rounded-control border border-line md:block">
                 <table className="w-full min-w-[860px] border-collapse text-sm">
                   <thead>
-                    <tr className="bg-superficie-2 text-left text-[11px] font-bold uppercase tracking-wider text-texto-3">
+                    <tr className="bg-surface-2 text-left text-[11px] font-bold uppercase tracking-wider text-ink-3">
                       <th scope="col" className="px-3 py-2.5">Rendición</th>
                       <th scope="col" className="px-3 py-2.5">Solicitada</th>
                       <th scope="col" className="px-3 py-2.5">Comprobantes</th>
@@ -133,17 +133,17 @@ export function MisRendiciones({ persona }: { persona: Persona }) {
                     {lista.map((r) => {
                       const { c, porCompletar, saldo } = resumen(r);
                       return (
-                        <tr key={r.id} className="border-t border-borde">
+                        <tr key={r.id} className="border-t border-line">
                           <td className="px-3 py-3">
-                            <Link href={`/rendicion/?id=${r.id}`} className="font-semibold text-acento-texto hover:underline">
+                            <Link href={`/rendicion/?id=${r.id}`} className="font-semibold text-primary-strong hover:underline">
                               {tituloRendicion(r)}
                             </Link>
-                            <span className="block text-xs text-texto-3">{r.tipo === "memo" ? "Memo de viáticos" : "Caja chica"}</span>
+                            <span className="block text-xs text-ink-3">{r.tipo === "memo" ? "Memo de viáticos" : "Caja chica"}</span>
                           </td>
                           <td className="px-3 py-3">{fechaCorta(r.fecha_solicitud)}</td>
                           <td className="px-3 py-3">
                             {c.comprobantes}
-                            <span className={`block text-xs ${porCompletar ? "font-semibold text-aviso" : "text-texto-3"}`}>
+                            <span className={`block text-xs ${porCompletar ? "font-semibold text-warning-strong" : "text-ink-3"}`}>
                               {porCompletar ? `${porCompletar} por completar` : c.comprobantes ? "Todo completo" : "Sin comprobantes"}
                             </span>
                           </td>
@@ -154,7 +154,7 @@ export function MisRendiciones({ persona }: { persona: Persona }) {
                           <td className="px-3 py-3">
                             <Estado estado={r.estado} />
                           </td>
-                          <td className="px-3 py-3 text-[13px] text-texto-3">{cuando(r.actualizado_en ?? r.creado_en)}</td>
+                          <td className="px-3 py-3 text-[13px] text-ink-3">{cuando(r.actualizado_en ?? r.creado_en)}</td>
                         </tr>
                       );
                     })}
@@ -167,12 +167,12 @@ export function MisRendiciones({ persona }: { persona: Persona }) {
                   const { c, porCompletar, saldo } = resumen(r);
                   return (
                     <li key={r.id}>
-                      <Link href={`/rendicion/?id=${r.id}`} className="block rounded-medio border border-borde p-3.5">
+                      <Link href={`/rendicion/?id=${r.id}`} className="block rounded-card border border-line p-3.5">
                         <span className="flex items-start justify-between gap-2">
-                          <span className="font-semibold text-tinta">{tituloRendicion(r)}</span>
+                          <span className="font-semibold text-ink">{tituloRendicion(r)}</span>
                           <Estado estado={r.estado} />
                         </span>
-                        <span className="mt-1 block text-xs text-texto-3">
+                        <span className="mt-1 block text-xs text-ink-3">
                           {c.comprobantes} comprobante{c.comprobantes === 1 ? "" : "s"}
                           {porCompletar ? ` · ${porCompletar} por completar` : ""} · {saldo}
                         </span>
@@ -206,10 +206,10 @@ export function Indicador({
   alerta?: boolean;
 }) {
   return (
-    <div className={`rounded-grande p-4 shadow-sm ${alerta ? "bg-peligro-suave text-peligro" : "bg-superficie"}`}>
-      <p className={`text-xs font-bold uppercase tracking-wider ${alerta ? "" : "text-texto-3"}`}>{titulo}</p>
-      <p className="mt-1.5 font-display text-2xl font-bold">{valor}</p>
-      <p className={`mt-0.5 line-clamp-2 text-[13px] ${alerta ? "" : "text-texto-3"}`}>{detalle}</p>
+    <div className={`rounded-card border border-control p-4 ${alerta ? "bg-danger-soft text-danger-strong" : "bg-surface"}`}>
+      <p className={`text-xs font-bold uppercase tracking-wider ${alerta ? "" : "text-ink-3"}`}>{titulo}</p>
+      <p className="mt-1.5 text-2xl font-bold">{valor}</p>
+      <p className={`mt-0.5 line-clamp-2 text-[13px] ${alerta ? "" : "text-ink-3"}`}>{detalle}</p>
     </div>
   );
 }
@@ -222,7 +222,7 @@ export function Pestanita({ activa, onClick, children }: { activa: boolean; onCl
       aria-selected={activa}
       onClick={onClick}
       className={`h-8.5 rounded-full px-3 text-[13px] transition ${
-        activa ? "bg-tinta font-semibold text-white" : "border border-borde-2 bg-superficie font-medium text-texto-2 hover:bg-superficie-2"
+        activa ? "bg-ink font-semibold text-on-fill" : "border border-control bg-surface font-medium text-ink-2 hover:bg-surface-2"
       }`}
     >
       {children}
@@ -235,16 +235,16 @@ function Avance({ consumo, texto, rojo }: { consumo: number | null; texto: strin
   return (
     <span className="flex items-center gap-2.5">
       <span
-        className="h-2 flex-1 overflow-hidden rounded-full bg-borde"
+        className="h-2 flex-1 overflow-hidden rounded-full bg-line"
         role="progressbar"
         aria-label="Gastado del monto"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.min(consumo ?? 0, 100)}
       >
-        <span className={`block h-full ${rojo || pasado ? "bg-peligro" : "bg-acento"}`} style={{ width: `${Math.min(consumo ?? 0, 100)}%` }} />
+        <span className={`block h-full ${rojo || pasado ? "bg-danger" : "bg-primary"}`} style={{ width: `${Math.min(consumo ?? 0, 100)}%` }} />
       </span>
-      <span className="whitespace-nowrap text-[13px] text-texto-2">{texto}</span>
+      <span className="whitespace-nowrap text-[13px] text-ink-2">{texto}</span>
     </span>
   );
 }

@@ -129,3 +129,34 @@ export const IconoNube = (p: Props) => (
     <path d="M7 18a5 5 0 0 1-.6-9.96A6 6 0 0 1 18 8.5a4.5 4.5 0 0 1-.5 9.5z" />
   </Trazo>
 );
+export const IconoMemo = (p: Props) => (
+  <Trazo {...p}>
+    <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+    <path d="M14 3v6h6M8 13h8M8 17h5" />
+  </Trazo>
+);
+export const IconoAprobar = (p: Props) => (
+  <Trazo {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M8 12.5l2.5 2.5L16 9.5" />
+  </Trazo>
+);
+export const IconoEnviar = (p: Props) => (
+  <Trazo {...p}>
+    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4z" />
+  </Trazo>
+);
+export const IconoAjustes = (p: Props) => (
+  <Trazo {...p}>
+    <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0" />
+    <circle cx="16" cy="6" r="2" />
+    <circle cx="10" cy="12" r="2" />
+    <circle cx="18" cy="18" r="2" />
+  </Trazo>
+);
+export const IconoSobre = (p: Props) => (
+  <Trazo {...p}>
+    <path d="M22 12h-6l-2 3h-4l-2-3H2" />
+    <path d="M5.5 5h13l3.5 7v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z" />
+  </Trazo>
+);

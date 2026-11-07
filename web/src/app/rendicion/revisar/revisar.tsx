@@ -31,13 +31,13 @@ export function VistaRevisar() {
 }
 
 const TONOS: Record<EstadoFila["clave"], string> = {
-  listo: "text-exito",
-  leyendo: "text-info",
-  falta: "text-aviso",
-  repetido: "text-aviso",
-  fallido: "text-peligro",
-  observado: "text-peligro",
-  descartado: "text-texto-3",
+  listo: "text-success-strong",
+  leyendo: "text-primary-strong",
+  falta: "text-warning-strong",
+  repetido: "text-warning-strong",
+  fallido: "text-danger-strong",
+  observado: "text-danger-strong",
+  descartado: "text-ink-3",
 };
 
 function Revisar({ id, inicial, persona }: { id: string; inicial: string | null; persona: Persona }) {
@@ -90,7 +90,7 @@ function Revisar({ id, inicial, persona }: { id: string; inicial: string | null;
   if (h.error && !h.datos) return <Aviso>{h.error}</Aviso>;
   if (!h.datos || !catalogos) {
     return (
-      <p className="text-texto-3" role="status">
+      <p className="text-ink-3" role="status">
         Cargando…
       </p>
     );
@@ -116,18 +116,18 @@ function Revisar({ id, inicial, persona }: { id: string; inicial: string | null;
 
   return (
     <div className="flex flex-col gap-3">
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-grande bg-superficie px-4 py-3 shadow-sm">
-        <Link href={`/rendicion/?id=${r.id}`} className="text-sm font-semibold text-acento-texto hover:underline">
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-card border border-control bg-surface px-4 py-3">
+        <Link href={`/rendicion/?id=${r.id}`} className="text-sm font-semibold text-primary-strong hover:underline">
           ← Volver a la hoja
         </Link>
-        <h1 className="font-display text-lg font-bold text-tinta">{tituloRendicion({ ...r, caja: h.datos.caja })}</h1>
+        <h1 className="text-lg font-bold text-ink">{tituloRendicion({ ...r, caja: h.datos.caja })}</h1>
         <Estado estado={r.estado} />
-        <span className="text-sm text-texto-2 lg:ml-auto">
+        <span className="text-sm text-ink-2 lg:ml-auto">
           {filas.length ? `${indice + 1} de ${filas.length}` : "Sin comprobantes"}
           {porRevisar > 0 && (
             <>
               {" "}
-              · <b className="text-aviso">{porRevisar} por revisar</b>
+              · <b className="text-warning-strong">{porRevisar} por revisar</b>
             </>
           )}
         </span>
@@ -170,23 +170,23 @@ function Revisar({ id, inicial, persona }: { id: string; inicial: string | null;
       )}
 
       {!actual ? (
-        <p className="rounded-grande bg-superficie p-6 text-texto-2 shadow-sm">Esta rendición no tiene comprobantes.</p>
+        <p className="rounded-card border border-control bg-surface p-6 text-ink-2">Esta rendición no tiene comprobantes.</p>
       ) : (
         <div className="grid gap-3 lg:h-[calc(100dvh-10rem)] lg:min-h-[560px] lg:grid-cols-[17rem_minmax(0,1fr)_25rem]">
-          <nav aria-label="Comprobantes" className="hidden flex-col gap-1 overflow-y-auto rounded-grande bg-superficie p-2 shadow-sm lg:flex">
+          <nav aria-label="Comprobantes" className="hidden flex-col gap-1 overflow-y-auto rounded-card border border-control bg-surface p-2 lg:flex">
             {conEstado.map(({ c, e }, i) => (
               <button
                 key={c.id}
                 type="button"
                 onClick={() => ir(i)}
                 aria-current={i === indice ? "true" : undefined}
-                className={`flex justify-between gap-2 rounded-chico p-2.5 text-left ${
-                  i === indice ? "bg-acento-suave outline-2 outline-acento" : "hover:bg-superficie-2"
+                className={`flex justify-between gap-2 rounded-control p-2.5 text-left ${
+                  i === indice ? "bg-primary-soft outline-2 outline-primary" : "hover:bg-surface-2"
                 } ${e.clave === "descartado" ? "opacity-55" : ""}`}
               >
                 <span className="flex min-w-0 flex-col">
                   <span className="truncate text-sm font-semibold">{c.proveedor || (e.clave === "leyendo" ? "Leyendo…" : "Sin proveedor")}</span>
-                  <span className="text-xs text-texto-3">
+                  <span className="text-xs text-ink-3">
                     {tipoCorto(c.tipo_comprobante_id)}
                     {c.fecha ? ` · ${c.fecha.slice(8, 10)}/${c.fecha.slice(5, 7)}` : ""}
                   </span>
@@ -223,8 +223,8 @@ function Revisar({ id, inicial, persona }: { id: string; inicial: string | null;
 function Observar({ conObservacion, onDevolver }: { conObservacion: number; onDevolver: (texto: string) => void }) {
   const [texto, setTexto] = useState("");
   return (
-    <section className="rounded-grande border border-aviso/40 bg-aviso-suave/50 p-4">
-      <label className="block text-sm font-semibold text-texto">
+    <section className="rounded-card border border-warning/40 bg-warning-soft/50 p-4">
+      <label className="block text-sm font-semibold text-ink">
         Observación general para quien rinde
         <textarea
           className={`mt-1.5 min-h-20 ${campo}`}
@@ -242,7 +242,7 @@ function Observar({ conObservacion, onDevolver }: { conObservacion: number; onDe
         >
           Devolver con observaciones
         </button>
-        <span className="text-[13px] text-texto-2">
+        <span className="text-[13px] text-ink-2">
           {conObservacion
             ? `Además van ${conObservacion} observación${conObservacion === 1 ? "" : "es"} en comprobantes.`
             : "También puedes observar cada comprobante en su ficha."}
@@ -258,11 +258,11 @@ function Visor({ archivo, archivos, pagina }: { archivo: Archivo | undefined; ar
   const [giro, setGiro] = useState(0);
   const enlace = archivo ? enlaces[archivo.id] : undefined;
   const pdf = archivo?.tipo_mime === "application/pdf";
-  const boton = "flex h-9 w-9 items-center justify-center rounded-lg border border-white/30 text-white hover:bg-white/10 disabled:opacity-40";
+  const boton = "flex h-9 w-9 items-center justify-center rounded-lg border border-white/30 text-on-fill hover:bg-white/10 disabled:bg-disabled disabled:text-disabled-ink";
 
   return (
-    <section aria-label="Imagen del comprobante" className="flex min-h-[55dvh] flex-col overflow-hidden rounded-grande bg-[#3a4654] lg:min-h-0">
-      <div className="flex items-center gap-2 px-3 py-2 text-[13px] text-white">
+    <section aria-label="Imagen del comprobante" className="flex min-h-[55dvh] flex-col overflow-hidden rounded-card bg-[#3a4654] lg:min-h-0">
+      <div className="flex items-center gap-2 px-3 py-2 text-[13px] text-on-fill">
         <span>{!archivo ? "Cargado a mano, sin imagen" : pdf ? `PDF · página ${pagina}` : "Foto"}</span>
         {archivo && !pdf && (
           <span className="ml-auto flex gap-1.5">
@@ -278,14 +278,14 @@ function Visor({ archivo, archivos, pagina }: { archivo: Archivo | undefined; ar
           </span>
         )}
         {enlace && (
-          <a href={pdf ? `${enlace}#page=${pagina}` : enlace} target="_blank" rel="noreferrer" className={`text-white underline ${pdf ? "ml-auto" : ""}`}>
+          <a href={pdf ? `${enlace}#page=${pagina}` : enlace} target="_blank" rel="noreferrer" className={`text-on-fill underline ${pdf ? "ml-auto" : ""}`}>
             Abrir aparte
           </a>
         )}
       </div>
       <div className="flex flex-1 items-start justify-center overflow-auto p-3">
         {!archivo ? (
-          <p className="m-auto text-sm text-white/80">Este comprobante se escribió a mano.</p>
+          <p className="m-auto text-sm text-on-fill/80">Este comprobante se escribió a mano.</p>
         ) : !enlace ? (
           <span className="m-auto h-2/3 w-1/2 animate-pulse rounded-lg bg-white/10" />
         ) : pdf ? (
@@ -331,13 +331,13 @@ function Formulario({
   const editable = puede && !c.descartado;
   const k = (campo: string, valor: unknown) => `${campo}-${String(valor)}-${intento}`;
   const num = (v: string) => (v ? Number(v) : null);
-  const rotulo = "flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-texto-3";
-  const falta = (vacio: boolean) => (vacio && editable ? "border-aviso bg-aviso-suave/60" : "");
+  const rotulo = "flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink-3";
+  const falta = (vacio: boolean) => (vacio && editable ? "border-warning bg-warning-soft/60" : "");
 
   return (
-    <section aria-label="Datos del comprobante" className="flex flex-col gap-3 overflow-y-auto rounded-grande bg-superficie p-4 shadow-sm">
+    <section aria-label="Datos del comprobante" className="flex flex-col gap-3 overflow-y-auto rounded-card border border-control bg-surface p-4">
       <div className="flex items-center gap-2">
-        <h2 className="font-display text-base font-bold">
+        <h2 className="text-base font-bold">
           {tipoCorto(c.tipo_comprobante_id)} {numeroCompleto(c)}
         </h2>
         <span className={`ml-auto text-xs font-bold ${TONOS[e.clave]}`}>{e.texto}</span>
@@ -462,18 +462,18 @@ function Formulario({
       </div>
 
       {c.ruc && c.numero && (
-        <p className={`flex gap-2 rounded-chico px-3 py-2 text-[13px] ${repetido ? "bg-aviso-suave text-aviso" : "bg-exito-suave text-exito"}`}>
+        <p className={`flex gap-2 rounded-control px-3 py-2 text-[13px] ${repetido ? "bg-warning-soft text-warning-strong" : "bg-success-soft text-success-strong"}`}>
           {!repetido && <IconoCheck className="mt-0.5 h-4 w-4 shrink-0" />}
           {repetido ? "Este comprobante (RUC y número) ya está en otra rendición." : "No está registrado en otra rendición."}
         </p>
       )}
 
       {esAdmin && puede ? (
-        <label className="block text-sm font-semibold text-texto">
+        <label className="block text-sm font-semibold text-ink">
           Observación para quien rinde
           <textarea
             key={k("observacion", c.observacion)}
-            className={`mt-1.5 min-h-16 ${campo} ${c.observacion ? "border-peligro" : ""}`}
+            className={`mt-1.5 min-h-16 ${campo} ${c.observacion ? "border-danger" : ""}`}
             defaultValue={c.observacion}
             placeholder="Solo si algo de este comprobante está mal."
             onBlur={(ev) => ev.target.value.trim() !== c.observacion && onGuardar(c.id, { observacion: ev.target.value.trim() })}
@@ -481,14 +481,14 @@ function Formulario({
         </label>
       ) : (
         c.observacion && (
-          <p className="rounded-chico bg-peligro-suave px-3 py-2 text-[13px] text-peligro">
+          <p className="rounded-control bg-danger-soft px-3 py-2 text-[13px] text-danger-strong">
             <b>Observación de administración:</b> {c.observacion}
           </p>
         )
       )}
 
       {c.total != null && c.moneda === "USD" && (
-        <p className="text-[13px] text-texto-2">Importe en dólares: US$ {aNumero(c.total).toFixed(2)}. Administración lo convierte al tipo de cambio del día.</p>
+        <p className="text-[13px] text-ink-2">Importe en dólares: US$ {aNumero(c.total).toFixed(2)}. Administración lo convierte al tipo de cambio del día.</p>
       )}
 
       <div className="mt-auto flex flex-wrap gap-2 pt-2">
@@ -509,7 +509,7 @@ function Formulario({
 function MarcaIA({ leidos, campo }: { leidos: Set<string>; campo: string }) {
   if (!leidos.has(campo)) return null;
   return (
-    <span title="Lo llenó la lectura automática" className="ml-1.5 rounded bg-info-suave px-1.5 py-px text-[10px] font-bold text-info">
+    <span title="Lo llenó la lectura automática" className="ml-1.5 rounded bg-primary-soft px-1.5 py-px text-[10px] font-bold text-primary-strong">
       IA
     </span>
   );

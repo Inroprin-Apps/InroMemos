@@ -1,11 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Sora } from "next/font/google";
+import { Manrope } from "next/font/google";
 import "./globals.css";
 import { ruta } from "@/lib/base";
 import { RegistroSW } from "./registro-sw";
 
-const dmSans = DM_Sans({ variable: "--font-dm-sans", subsets: ["latin"] });
-const sora = Sora({ variable: "--font-sora", subsets: ["latin"] });
+// Una sola familia, como INROCONTA: la jerarquía se arma con peso y tamaño.
+const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
 
 export const metadata: Metadata = {
   title: "InroScan",
@@ -15,11 +15,11 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "InroScan", statusBarStyle: "default" },
 };
 
-export const viewport: Viewport = { themeColor: "#007a72" };
+export const viewport: Viewport = { themeColor: "#006db1" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="es" className={`${dmSans.variable} ${sora.variable} h-full antialiased`}>
+    <html lang="es" className={`${manrope.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans">
         {children}
         <RegistroSW />

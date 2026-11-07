@@ -54,7 +54,8 @@ export function irAConectar(carpeta: string) {
     client_id: CLIENT_ID,
     redirect_uri: retornoDrive(),
     response_type: "code",
-    scope: "openid email https://www.googleapis.com/auth/drive",
+    // Drive (legajos y bases de cuentas) y Gmail (avisos de los memos, desde esta cuenta).
+    scope: "openid email https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/gmail.send",
     access_type: "offline",
     prompt: "consent",
     hd: "inroprin.com",

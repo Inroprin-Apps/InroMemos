@@ -56,7 +56,7 @@ function Contenido() {
     }
   };
 
-  if (!cajas || !catalogos) return error ? <Aviso>{error}</Aviso> : <p className="text-texto-3">Cargando…</p>;
+  if (!cajas || !catalogos) return error ? <Aviso>{error}</Aviso> : <p className="text-ink-3">Cargando…</p>;
 
   const opcionesPersonas = personas.map((p) => ({ id: p.id, nombre: p.nombre || p.correo, activo: p.activo }));
   const enCurso = (caja: Caja) =>
@@ -83,11 +83,11 @@ function Contenido() {
         />
       )}
 
-      <section className="rounded-grande bg-superficie p-4 shadow-sm">
+      <section className="rounded-card border border-control bg-surface p-4">
         {cajas.length === 0 ? (
-          <p className="py-6 text-center text-texto-2">Todavía no hay cajas chicas. Crea la primera con «Nueva caja».</p>
+          <p className="py-6 text-center text-ink-2">Todavía no hay cajas chicas. Crea la primera con «Nueva caja».</p>
         ) : (
-          <div className="overflow-x-auto rounded-chico border border-borde">
+          <div className="overflow-x-auto rounded-control border border-line">
             <table className={`${tablaAdmin} min-w-[900px]`}>
               <thead>
                 <tr className={cabeceraAdmin}>
@@ -104,8 +104,8 @@ function Contenido() {
                 {cajas.map((c) => {
                   const actual = enCurso(c);
                   return (
-                    <tr key={c.id} className={`border-t border-borde ${c.activa ? "" : "opacity-60"}`}>
-                      <td className="px-3 py-2 font-display text-base font-bold">Caja {c.numero}</td>
+                    <tr key={c.id} className={`border-t border-line ${c.activa ? "" : "opacity-60"}`}>
+                      <td className="px-3 py-2 text-base font-bold">Caja {c.numero}</td>
                       <td className="px-2 py-2">
                         <Lista valor={c.administrador_id} etiqueta="Administrador" opciones={opcionesPersonas} onGuardar={(v) => v && cambiar(c.id, { administrador_id: v })} />
                       </td>
@@ -123,7 +123,7 @@ function Contenido() {
                           onGuardar={(v) => aNumero(v) > 0 && cambiar(c.id, { monto_fondo: aNumero(v) })}
                         />
                       </td>
-                      <td className="px-3 py-2 text-[13px] text-texto-2">
+                      <td className="px-3 py-2 text-[13px] text-ink-2">
                         {actual ? `N° ${actual.correlativo} en curso` : ultima(c) ? `Última: N° ${ultima(c)}` : "Ninguna todavía"}
                       </td>
                       <td className="px-3 py-2">
@@ -136,7 +136,7 @@ function Contenido() {
             </table>
           </div>
         )}
-        <p className="mt-3 text-[13px] text-texto-3">
+        <p className="mt-3 text-[13px] text-ink-3">
           Un cambio de fondo vale para las próximas reposiciones; la que está en curso conserva el suyo.
         </p>
       </section>
@@ -186,10 +186,10 @@ function NuevaCaja({
     }
   };
 
-  const rotulo = "block text-sm font-medium text-texto-2";
+  const rotulo = "block text-sm font-medium text-ink-2";
   return (
-    <form onSubmit={crear} className="space-y-4 rounded-grande bg-superficie p-5 shadow-sm">
-      <h2 className="font-display text-lg font-bold">Nueva caja chica</h2>
+    <form onSubmit={crear} className="space-y-4 rounded-card border border-control bg-surface p-5">
+      <h2 className="text-lg font-bold">Nueva caja chica</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <label className={rotulo}>
           Número
@@ -235,8 +235,8 @@ function NuevaCaja({
           </select>
         </label>
       </div>
-      {fondo && aNumero(fondo) > 0 && <p className="text-sm text-texto-3">Fondo de {soles(aNumero(fondo))}.</p>}
-      <p className="text-[13px] text-texto-3">Si el administrador no aparece, primero tiene que entrar una vez a InroScan con su cuenta @inroprin.com.</p>
+      {fondo && aNumero(fondo) > 0 && <p className="text-sm text-ink-3">Fondo de {soles(aNumero(fondo))}.</p>}
+      <p className="text-[13px] text-ink-3">Si el administrador no aparece, primero tiene que entrar una vez a InroScan con su cuenta @inroprin.com.</p>
       {error && <Aviso>{error}</Aviso>}
       <div className="flex gap-2">
         <button type="submit" className={botonPrincipal} disabled={guardando}>

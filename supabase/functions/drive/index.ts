@@ -14,7 +14,19 @@
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
 import { crypto as cripto } from "jsr:@std/crypto@1.0.5";
 import { encodeHex } from "jsr:@std/encoding@1.0.10/hex";
-import { canjearCodigo, correoDe, Drive, ErrorDeGoogle, tokenDeAcceso } from "./google.ts";
+import {
+  canjearCodigo,
+  correoDe,
+  docDesdeHtml,
+  Drive,
+  enviarCorreo,
+  ErrorDeGoogle,
+  tokenDeAcceso,
+  valoresDeHoja,
+} from "./google.ts";
+import { armarCorreo, mensajeCrudo } from "./correo.ts";
+import { type Base, comparar, huella, identificador, leerBase, mascara, soloDigitos } from "./cuentas.ts";
+import { htmlMemo, nombreCarpeta, rutaMemo } from "./memo.ts";
 import {
   armarHoja,
   type Catalogos,
@@ -77,6 +89,13 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return responder(405, { error: "Solo POST." });
   try {
     const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+    // El reloj de la base (pg_cron) entra con su propio secreto.
+    if (token && await esReloj(token)) {
+      const cuerpo = await req.json().catch(() => ({}));
+      if (cuerpo.accion === "pendientes") return responder(200, await pendientes());
+      if (cuerpo.accion === "cuentas_sincronizar") return responder(200, await sincronizarCuentas());
+      throw new Rechazo(400, "Acción desconocida.");
+    }
     const { data: quien } = await db.auth.getUser(token);
     if (!quien?.user) throw new Rechazo(401, "Tu sesión venció. Vuelve a entrar.");
     const { data: persona } = await db.from("personas").select("es_administracion, activo").eq("id", quien.user.id)
@@ -127,6 +146,16 @@ Deno.serve(async (req) => {
 
     if (cuerpo.accion === "publicar") {
       return responder(200, await publicar(String(cuerpo.rendicion_id), quien.user.id, !!persona.es_administracion));
+    }
+    if (cuerpo.accion === "memo") {
+      return responder(200, await publicarMemo(String(cuerpo.memo_id), quien.user.id, !!persona.es_administracion));
+    }
+    if (cuerpo.accion === "verificar_cuenta") {
+      return responder(200, await verificarCuenta(quien.user.id, cuerpo));
+    }
+    if (cuerpo.accion === "pendientes" || cuerpo.accion === "cuentas_sincronizar") {
+      if (!persona.es_administracion) throw new Rechazo(403, "Solo administración.");
+      return responder(200, cuerpo.accion === "pendientes" ? await pendientes() : await sincronizarCuentas());
     }
     throw new Rechazo(400, "Acción desconocida.");
   } catch (e) {
@@ -308,4 +337,288 @@ async function leerCatalogos(): Promise<Catalogos> {
     conceptos: c.data ?? [],
     tipos: t.data ?? [],
   };
+}
+
+// ===========================================================================
+// Memos: PDF membretado y legajo en Drive
+// ===========================================================================
+
+/** La app publicada, para los enlaces de los correos. */
+const APP = Deno.env.get("APP_URL") || "https://inroprin-apps.github.io/InroScan/web";
+const LOGO = `${APP}/icono-192.png`;
+
+async function googleConectado() {
+  const c = await conexion();
+  if (!c) throw new Rechazo(409, "Drive no está conectado todavía.");
+  const token = await tokenDeAcceso(fetch, {
+    refresh_token: c.refresh_token,
+    client_id: CLIENT_ID,
+    client_secret: secreto(),
+  });
+  return { c, token, drive: new Drive(fetch, token) };
+}
+
+/**
+ * El PDF de un memo aprobado, en su carpeta (el legajo), con los sustentos
+ * copiados al lado. Una vez por versión aprobada: si se corrige y se vuelve a
+ * aprobar, sale otro PDF y el anterior se queda en el legajo.
+ */
+async function publicarMemo(memoId: string, uid: string | null, esAdmin: boolean) {
+  const { data: m } = await db.from("memos")
+    .select(
+      "*, unidad:unidades(codigo, nombre, carpeta_drive, jefe_correo, suplente_correo), empresa:empresas(nombre, codigo)",
+    )
+    .eq("id", memoId).maybeSingle();
+  if (!m) throw new Rechazo(404, "No existe ese memo.");
+  if (uid) {
+    const { data: p } = await db.from("personas").select("correo").eq("id", uid).maybeSingle();
+    const participa = m.emisor_id === uid || [m.unidad?.jefe_correo, m.unidad?.suplente_correo].includes(p?.correo);
+    if (!participa && !esAdmin) throw new Rechazo(403, "No tienes permiso sobre ese memo.");
+  }
+  if (!["aprobado", "enviado", "recibido"].includes(m.estado)) {
+    return { publicado: false, motivo: "Se publica al aprobarse." };
+  }
+  if (m.pdf_drive_id && m.pdf_version === m.version) return { publicado: false, pdf: m.pdf_drive_id };
+
+  const { c, token, drive } = await googleConectado();
+  let carpeta: string = m.drive_carpeta_id;
+  if (!carpeta) {
+    // Si el área tiene su carpeta en Drive, el memo va ahí (por año); si no,
+    // bajo la carpeta madre: Memos › Empresa › Área › Año.
+    const anio = String(m.anio);
+    let padre = m.unidad?.carpeta_drive || c.carpeta_id;
+    const ruta = m.unidad?.carpeta_drive ? [anio] : rutaMemo(m.empresa?.nombre ?? "", m.unidad?.nombre ?? "", m.anio);
+    for (const nombre of ruta) padre = await drive.carpeta(nombre, padre, c.unidad_id);
+    carpeta = await drive.carpeta(nombreCarpeta(m.numero_visible, m.asunto), padre, c.unidad_id);
+    await db.from("memos").update({ drive_carpeta_id: carpeta }).eq("id", m.id);
+  }
+
+  const [{ data: lineas }, { data: aprobador }] = await Promise.all([
+    db.from("lineas_pago").select("*").eq("memo_id", m.id).order("orden"),
+    m.aprobado_por
+      ? db.from("personas").select("nombre, correo").eq("id", m.aprobado_por).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const html = htmlMemo(m, lineas ?? [], {
+    empresa: m.empresa?.nombre ?? "",
+    unidad: m.unidad?.nombre ?? "",
+    aprobador: aprobador ? aprobador.nombre || aprobador.correo : null,
+    logo: m.empresa?.codigo === "INR" ? LOGO : null,
+  });
+  const nombre = `MEMORÁNDUM ${m.numero_visible}${m.version > 1 ? ` v${m.version}` : ""} - APROBADO`;
+  const doc = await docDesdeHtml(fetch, token, nombre, carpeta, html);
+  const pdf = await drive.subir(`${nombre}.pdf`, carpeta, await drive.pdf(doc), "application/pdf");
+  await db.from("memos").update({ pdf_drive_id: pdf.id, pdf_version: m.version }).eq("id", m.id);
+
+  // Los sustentos se copian (no se mueven): Supabase sigue teniendo el suyo.
+  const { data: sustentos } = await db.from("memo_sustentos").select("id, nombre, ruta, tipo_mime, drive_id")
+    .eq("memo_id", m.id).eq("descartado", false).is("drive_id", null);
+  for (const s of sustentos ?? []) {
+    const { data: blob } = await db.storage.from("sustentos").download(s.ruta);
+    if (!blob) continue;
+    const subido = await drive.subir(s.nombre, carpeta, blob, s.tipo_mime);
+    await db.from("memo_sustentos").update({ drive_id: subido.id }).eq("id", s.id);
+  }
+
+  // El PDF lo pueden abrir los participantes (salvo lo confidencial: ese,
+  // solo por la plataforma).
+  if (m.confidencialidad !== "confidencial") {
+    const { data: emisor } = await db.from("personas").select("correo").eq("id", m.emisor_id).maybeSingle();
+    const lectores = new Set(
+      [emisor?.correo, m.destinatario_correo, ...(m.copias ?? []), m.unidad?.jefe_correo, m.unidad?.suplente_correo]
+        .filter((x): x is string => !!x && x.endsWith("@inroprin.com")),
+    );
+    for (const correo of lectores) await drive.compartir(pdf.id, correo).catch((e) => console.error("compartir", e));
+  }
+  return { publicado: true, pdf: pdf.id, carpeta };
+}
+
+// ===========================================================================
+// El reloj: correos pendientes y PDFs que faltan
+// ===========================================================================
+
+async function pendientes() {
+  const resultado = { correos: 0, errores: 0, pdfs: 0 };
+  const { data: avisos } = await db.from("avisos").select("*").in("estado", ["pendiente", "error"]).lt("intentos", 5)
+    .order("creado_en").limit(25);
+  if (avisos?.length) {
+    const { c, token } = await googleConectado();
+    const modo = Deno.env.get("CORREO_MODO") === "real" ? "real" : "prueba";
+    for (const a of avisos) {
+      const { data: m } = await db.from("memos").select("*").eq("id", a.memo_id).maybeSingle();
+      if (!m) continue;
+      const emisor = (await db.from("personas").select("correo").eq("id", m.emisor_id).maybeSingle()).data?.correo;
+      try {
+        const correo = armarCorreo(a, m, { app: APP, modo, cuentaPrueba: c.cuenta });
+        await enviarCorreo(fetch, token, mensajeCrudo(correo, c.cuenta, emisor ?? undefined));
+        await db.from("avisos").update({
+          estado: "enviado",
+          enviado_en: new Date().toISOString(),
+          intentos: a.intentos + 1,
+        })
+          .eq("id", a.id);
+        // El memo aprobado ya salió hacia su destinatario: queda «Enviado».
+        if (a.tipo === "aprobado" && m.estado === "aprobado") {
+          await db.from("memos").update({ estado: "enviado", enviado_en: new Date().toISOString() }).eq("id", m.id);
+        }
+        resultado.correos++;
+      } catch (e) {
+        resultado.errores++;
+        await db.from("avisos").update({ estado: "error", error: (e as Error).message, intentos: a.intentos + 1 })
+          .eq("id", a.id);
+      }
+    }
+  }
+  // Los memos aprobados cuyo PDF falta o es de otra versión.
+  const { data: sinPdf } = await db.from("memos").select("id, version, pdf_version")
+    .in("estado", ["aprobado", "enviado", "recibido"]).order("aprobado_en", { ascending: false }).limit(50);
+  for (const m of (sinPdf ?? []).filter((x) => x.pdf_version !== x.version).slice(0, 5)) {
+    try {
+      if ((await publicarMemo(m.id, null, true)).publicado) resultado.pdfs++;
+    } catch (e) {
+      console.error("pdf", m.id, e);
+    }
+  }
+  return resultado;
+}
+
+// ===========================================================================
+// Cuentas bancarias: copia de las bases sin números completos, y verificación
+// ===========================================================================
+
+/**
+ * La clave de las huellas de cuentas la genera la base (integraciones
+ * «cuentas», que solo lee el sistema): nunca pasa por una persona.
+ */
+async function claveCuentas(): Promise<string> {
+  const { data } = await db.from("integraciones").select("datos").eq("clave", "cuentas").maybeSingle();
+  const k = (data?.datos as { clave?: string } | null)?.clave;
+  if (!k || k.length < 32) throw new Rechazo(409, "Falta la clave de cuentas en integraciones (migración …_reloj).");
+  return k;
+}
+
+/** El reloj de la base entra con un token cuya huella está en integraciones «reloj». */
+async function esReloj(token: string): Promise<boolean> {
+  const { data } = await db.from("integraciones").select("datos").eq("clave", "reloj").maybeSingle();
+  const guardada = (data?.datos as { huella?: string } | null)?.huella;
+  if (!guardada) return false;
+  const h = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token)))]
+    .map((b) => b.toString(16).padStart(2, "0")).join("");
+  return h === guardada;
+}
+
+async function sincronizarCuentas() {
+  const clave = await claveCuentas();
+  const { data: bases } = await db.from("bases_cuentas").select("*").eq("activo", true);
+  if (!bases?.length) throw new Rechazo(409, "No hay bases de cuentas configuradas.");
+  const { token } = await googleConectado();
+  const resumen: Record<string, number | string> = {};
+  for (const b of bases) {
+    const { data: corrida } = await db.from("corridas").insert({ job: `cuentas-${b.base.toLowerCase()}` }).select("id")
+      .single();
+    try {
+      const cuentas = leerBase(await valoresDeHoja(fetch, token, b.hoja_id, b.pestana), b.base as Base);
+      const filas = [];
+      for (const x of cuentas) {
+        filas.push({
+          base: b.base,
+          identificador: x.identificador,
+          titular: x.titular,
+          banco: x.banco,
+          moneda: x.moneda,
+          tipo: x.tipo,
+          cuenta: mascara(x.cuenta),
+          cci: x.cci ? mascara(x.cci) : "",
+          huella_cuenta: await huella(clave, x.cuenta),
+          huella_cci: x.cci ? await huella(clave, x.cci) : null,
+          estado: "verificada",
+          actualizado_en: new Date().toISOString(),
+        });
+      }
+      const unicas = [
+        ...new Map(filas.map((f) => [`${f.identificador}|${f.huella_cuenta}|${f.huella_cci}`, f])).values(),
+      ];
+      for (let i = 0; i < unicas.length; i += 500) {
+        const { error } = await db.from("cuentas_bancarias").upsert(unicas.slice(i, i + 500), { onConflict: "llave" });
+        if (error) throw new Error(error.message);
+      }
+      resumen[b.base] = unicas.length;
+      await db.from("corridas").update({
+        terminada_en: new Date().toISOString(),
+        resultado: "OK",
+        filas: unicas.length,
+      })
+        .eq("id", corrida?.id);
+    } catch (e) {
+      resumen[b.base] = (e as Error).message;
+      await db.from("corridas").update({
+        terminada_en: new Date().toISOString(),
+        resultado: "ERROR",
+        error: (e as Error).message,
+      }).eq("id", corrida?.id);
+    }
+  }
+  return resumen;
+}
+
+/**
+ * La cuenta que escribe el emisor en una línea: llega completa solo hasta acá;
+ * se guarda su huella y sus últimos 4 dígitos, y se compara con lo registrado.
+ */
+async function verificarCuenta(
+  uid: string,
+  cuerpo: { linea_id?: string; cuenta?: string; cci?: string; banco?: string },
+) {
+  const clave = await claveCuentas();
+  const { data: l } = await db.from("lineas_pago").select("*, memo:memos(id, emisor_id, estado)").eq(
+    "id",
+    String(cuerpo.linea_id),
+  )
+    .maybeSingle();
+  if (!l) throw new Rechazo(404, "No existe esa línea.");
+  if (l.memo?.emisor_id !== uid || !["borrador", "observado"].includes(l.memo?.estado)) {
+    throw new Rechazo(403, "Solo quien emite cambia la cuenta, mientras el memo se edita.");
+  }
+  const cuenta = String(cuerpo.cuenta ?? "").trim();
+  const cci = soloDigitos(String(cuerpo.cci ?? ""));
+  if (cci && cci.length !== 20) throw new Rechazo(400, "El CCI tiene 20 dígitos.");
+  const hCuenta = cuenta ? await huella(clave, cuenta) : l.huella_cuenta;
+  const hCci = cci ? await huella(clave, cci) : l.huella_cci;
+  const id = identificador(l.beneficiario_doc);
+  const { data: registradas } = await db.from("cuentas_bancarias").select("huella_cuenta, huella_cci, estado")
+    .eq("identificador", id);
+  let estado: string = comparar(registradas ?? [], hCuenta, hCci);
+
+  // Nueva o distinta: queda pendiente de verificación para la próxima vez.
+  if (estado === "no_registrada" || estado === "distinta") {
+    const { data: p } = await db.from("personas").select("correo").eq("id", uid).maybeSingle();
+    await db.from("cuentas_bancarias").upsert({
+      base: "PLATAFORMA",
+      identificador: id,
+      titular: l.beneficiario,
+      banco: cuerpo.banco || l.banco || null,
+      tipo: "PRINCIPAL",
+      cuenta: cuenta ? mascara(cuenta) : (l.cuenta || ""),
+      cci: cci ? mascara(cci) : (l.cci || ""),
+      huella_cuenta: hCuenta,
+      huella_cci: hCci,
+      estado: "pendiente",
+      motivo: estado === "distinta" ? "discrepancia" : "alta",
+      registrada_por: p?.correo ?? null,
+      memo_id: l.memo_id,
+      actualizado_en: new Date().toISOString(),
+    }, { onConflict: "llave", ignoreDuplicates: true });
+    estado = estado === "distinta" ? "distinta" : "pendiente";
+  }
+  const cambios = {
+    banco: cuerpo.banco || l.banco,
+    cuenta: cuenta ? mascara(cuenta) : l.cuenta,
+    cci: cci ? mascara(cci) : l.cci,
+    huella_cuenta: hCuenta,
+    huella_cci: hCci,
+    estado_cuenta: estado,
+  };
+  const { error } = await db.from("lineas_pago").update(cambios).eq("id", l.id);
+  if (error) throw new Error(error.message);
+  return cambios;
 }

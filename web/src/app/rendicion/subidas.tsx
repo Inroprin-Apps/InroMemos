@@ -108,11 +108,11 @@ export function EnCola({ rendicionId, errores }: { rendicionId: string; errores:
       ))}
       {esperando.length > 0 &&
         (enLinea ? (
-          <p role="status" className="rounded-chico bg-info-suave px-4 py-3 text-sm text-info">
+          <p role="status" className="rounded-control bg-primary-soft px-4 py-3 text-sm text-primary-strong">
             Subiendo {esperando.length} archivo{esperando.length === 1 ? "" : "s"}…
           </p>
         ) : (
-          <div role="status" className="flex gap-3 rounded-chico bg-aviso-suave px-4 py-3 text-sm text-aviso">
+          <div role="status" className="flex gap-3 rounded-control bg-warning-soft px-4 py-3 text-sm text-warning-strong">
             <IconoSinSenal className="mt-0.5 h-5 w-5 shrink-0" />
             <p>
               <b>Sin señal.</b> {esperando.length} foto{esperando.length === 1 ? "" : "s"} guardada{esperando.length === 1 ? "" : "s"} en
@@ -122,7 +122,7 @@ export function EnCola({ rendicionId, errores }: { rendicionId: string; errores:
           </div>
         ))}
       {bloqueados.map((p) => (
-        <div key={p.clave} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-chico bg-peligro-suave px-4 py-2.5 text-sm text-peligro">
+        <div key={p.clave} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-control bg-danger-soft px-4 py-2.5 text-sm text-danger-strong">
           <span className="font-semibold">{p.nombre}:</span>
           <span className="flex-1">{p.error}</span>
           <button type="button" className="font-semibold underline" onClick={() => reintentar(p)}>
@@ -179,11 +179,11 @@ export function ZonaArrastre({ onArchivos }: { onArchivos: (l: File[]) => void }
 
   if (!encima) return null;
   return (
-    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-acento-texto/15 p-6">
-      <div className="rounded-grande border-2 border-dashed border-acento bg-superficie px-10 py-8 text-center shadow-xl">
-        <IconoSubir className="mx-auto h-8 w-8 text-acento-texto" />
-        <p className="mt-2 font-display text-lg font-bold text-tinta">Suelta para subir</p>
-        <p className="text-sm text-texto-2">Fotos o PDF: se leen solos.</p>
+    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-primary/15 p-6">
+      <div className="rounded-card border-2 border-dashed border-primary bg-surface px-10 py-8 text-center shadow-card">
+        <IconoSubir className="mx-auto h-8 w-8 text-primary-strong" />
+        <p className="mt-2 text-lg font-bold text-ink">Suelta para subir</p>
+        <p className="text-sm text-ink-2">Fotos o PDF: se leen solos.</p>
       </div>
     </div>
   );

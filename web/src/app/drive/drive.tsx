@@ -7,7 +7,7 @@ import { estadoDrive, idDeCarpeta, irAConectar, terminarConexion, type EstadoDri
 import { PaginaAdmin } from "../administracion";
 import { Aviso, botonPrincipal, botonSecundario, campo } from "../piezas";
 
-const rotulo = "block text-sm font-medium text-texto-2";
+const rotulo = "block text-sm font-medium text-ink-2";
 
 export function Drive() {
   return (
@@ -49,9 +49,9 @@ function Contenido() {
   }, [params]);
 
   return (
-    <section className="max-w-2xl space-y-4 rounded-grande bg-superficie p-5 shadow-sm">
+    <section className="max-w-2xl space-y-4 rounded-card border border-control bg-surface p-5">
       {error && <Aviso>{error}</Aviso>}
-      {!estado && !error && <p className="text-texto-3">Revisando la conexión…</p>}
+      {!estado && !error && <p className="text-ink-3">Revisando la conexión…</p>}
       {estado?.conectado && (
         <Aviso tono="info">
           Conectado con <b>{estado.cuenta}</b> a la carpeta{" "}
@@ -62,9 +62,9 @@ function Contenido() {
         </Aviso>
       )}
       {estado && !estado.conectado && (
-        <p className="text-texto-2">Todavía no hay una cuenta conectada. Se conecta una vez, con una cuenta de administración.</p>
+        <p className="text-ink-2">Todavía no hay una cuenta conectada. Se conecta una vez, con una cuenta de administración.</p>
       )}
-      <ol className="list-decimal space-y-1 pl-5 text-sm text-texto-2">
+      <ol className="list-decimal space-y-1 pl-5 text-sm text-ink-2">
         <li>Abre en Drive la carpeta madre (puede estar dentro de una unidad compartida) y copia su enlace.</li>
         <li>Pégalo acá y conecta con una cuenta que pueda editar esa carpeta; acepta el acceso a Drive.</li>
         <li>Desde ahí, cada envío deja su carpeta, su hoja, su PDF y las imágenes.</li>
@@ -78,7 +78,7 @@ function Contenido() {
           placeholder="https://drive.google.com/drive/folders/…"
         />
       </label>
-      {enlace && !carpeta && <p className="text-sm text-peligro">Ese enlace no parece de una carpeta de Drive.</p>}
+      {enlace && !carpeta && <p className="text-sm text-danger-strong">Ese enlace no parece de una carpeta de Drive.</p>}
       <button
         type="button"
         className={estado?.conectado ? botonSecundario : botonPrincipal}

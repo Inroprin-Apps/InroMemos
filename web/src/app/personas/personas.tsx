@@ -51,21 +51,21 @@ function Contenido({ yo }: { yo: Persona }) {
     }
   };
 
-  if (!personas || !catalogos) return error ? <Aviso>{error}</Aviso> : <p className="text-texto-3">Cargando…</p>;
+  if (!personas || !catalogos) return error ? <Aviso>{error}</Aviso> : <p className="text-ink-3">Cargando…</p>;
 
   const texto = busqueda.trim().toLowerCase();
   const lista = personas.filter((p) => !texto || `${p.nombre} ${p.correo}`.toLowerCase().includes(texto));
 
   return (
-    <section className="flex flex-col gap-3 rounded-grande bg-superficie p-4 shadow-sm">
+    <section className="flex flex-col gap-3 rounded-card border border-control bg-surface p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-texto-2">
+        <p className="text-sm text-ink-2">
           {personas.filter((p) => p.activo).length} activas · {personas.filter((p) => p.es_administracion).length} en administración
         </p>
         <input aria-label="Buscar persona" placeholder="Buscar por nombre o correo" className={`${campoSuelto} w-64`} value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
       </div>
       {error && <Aviso>{error}</Aviso>}
-      <div className="overflow-x-auto rounded-chico border border-borde">
+      <div className="overflow-x-auto rounded-control border border-line">
         <table className={`${tablaAdmin} min-w-[820px]`}>
           <thead>
             <tr className={cabeceraAdmin}>
@@ -81,11 +81,11 @@ function Contenido({ yo }: { yo: Persona }) {
             {lista.map((p) => {
               const soyYo = p.id === yo.id;
               return (
-                <tr key={p.id} className={`border-t border-borde ${p.activo ? "" : "opacity-55"}`}>
+                <tr key={p.id} className={`border-t border-line ${p.activo ? "" : "opacity-55"}`}>
                   <td className="px-2 py-1.5">
                     <Texto key={`${p.id}-${p.nombre}-${intento}`} valor={p.nombre} etiqueta="Nombre" className={`${celda} font-medium`} onGuardar={(v) => v && cambiar(p.id, { nombre: v })} />
                   </td>
-                  <td className="px-3 py-1.5 text-texto-2">{p.correo}</td>
+                  <td className="px-3 py-1.5 text-ink-2">{p.correo}</td>
                   <td className="px-2 py-1.5">
                     <Lista valor={p.area_id} etiqueta="Área" opciones={catalogos.areas} vacio="Sin área" onGuardar={(v) => cambiar(p.id, { area_id: v ? Number(v) : null })} />
                   </td>
@@ -101,14 +101,14 @@ function Contenido({ yo }: { yo: Persona }) {
                   <td className="px-3 py-1.5">
                     <Interruptor activo={p.activo} etiqueta={`${p.nombre || p.correo} activa`} disabled={soyYo} onCambiar={(v) => cambiar(p.id, { activo: v })} />
                   </td>
-                  <td className="px-3 py-1.5 text-[13px] text-texto-3">{fechaCorta(p.creado_en.slice(0, 10))}</td>
+                  <td className="px-3 py-1.5 text-[13px] text-ink-3">{fechaCorta(p.creado_en.slice(0, 10))}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
-      <p className="text-[13px] text-texto-3">
+      <p className="text-[13px] text-ink-3">
         Una persona desactivada no puede entrar ni ver sus rendiciones; lo que registró queda en el historial.
       </p>
     </section>

@@ -26,8 +26,8 @@ export function PaginaAdmin({
           <div className="space-y-5">
             <header className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h1 className="font-display text-2xl font-bold text-tinta">{titulo}</h1>
-                <p className="mt-1 text-texto-2">{descripcion}</p>
+                <h1 className="text-2xl font-bold text-ink">{titulo}</h1>
+                <p className="mt-1 text-ink-2">{descripcion}</p>
               </div>
               {acciones}
             </header>
@@ -61,12 +61,12 @@ export function Interruptor({
       aria-label={etiqueta}
       disabled={disabled}
       onClick={() => onCambiar(!activo)}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition disabled:opacity-50 ${activo ? "bg-acento-texto" : "bg-borde-2"}`}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition disabled:bg-disabled disabled:text-disabled-ink ${activo ? "bg-primary" : "bg-control"}`}
     >
-      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${activo ? "left-5.5" : "left-0.5"}`} />
+      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-surface shadow-card transition-all ${activo ? "left-5.5" : "left-0.5"}`} />
     </button>
   );
 }
 
 export const tablaAdmin = "w-full border-collapse text-sm";
-export const cabeceraAdmin = "bg-superficie-2 text-left text-[11px] font-bold uppercase tracking-wider text-texto-3";
+export const cabeceraAdmin = "bg-surface-2 text-left text-[11px] font-bold uppercase tracking-wider text-ink-3";

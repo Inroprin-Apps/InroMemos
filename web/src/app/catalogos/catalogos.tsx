@@ -54,7 +54,7 @@ function Contenido() {
   const [intento, setIntento] = useState(0);
 
   if (errorCatalogos) return <Aviso>{errorCatalogos}</Aviso>;
-  if (!catalogos) return <p className="text-texto-3">Cargando…</p>;
+  if (!catalogos) return <p className="text-ink-3">Cargando…</p>;
 
   const filas = filasDe(catalogos, pestana);
   const conceptos = pestana === "conceptos";
@@ -73,7 +73,7 @@ function Contenido() {
   const cambiar = (id: number | string, cambios: Record<string, unknown>) => hacer(() => cambiarEnCatalogo(pestana as TablaCatalogo, id, cambios));
 
   return (
-    <section className="flex flex-col gap-4 rounded-grande bg-superficie p-4 shadow-sm">
+    <section className="flex flex-col gap-4 rounded-card border border-control bg-surface p-4">
       <div role="tablist" aria-label="Catálogo" className="flex flex-wrap gap-1.5">
         {PESTANAS.map((p) => (
           <Pestanita key={p.clave} activa={pestana === p.clave} onClick={() => setPestana(p.clave)}>
@@ -81,12 +81,12 @@ function Contenido() {
           </Pestanita>
         ))}
       </div>
-      <p className="text-sm text-texto-2">{PESTANAS.find((p) => p.clave === pestana)?.nota}</p>
+      <p className="text-sm text-ink-2">{PESTANAS.find((p) => p.clave === pestana)?.nota}</p>
       {error && <Aviso>{error}</Aviso>}
 
       {!tipos && <Agregar key={pestana} conCategoria={conceptos} onAgregar={(fila) => hacer(() => crearEnCatalogo(pestana as TablaCatalogo, fila))} />}
 
-      <div className="overflow-x-auto rounded-chico border border-borde">
+      <div className="overflow-x-auto rounded-control border border-line">
         <table className={`${tablaAdmin} ${conceptos ? "min-w-[760px]" : ""}`}>
           <thead>
             <tr className={cabeceraAdmin}>
@@ -105,7 +105,7 @@ function Contenido() {
             {[...filas]
               .sort((a, b) => Number(b.activo) - Number(a.activo))
               .map((f) => (
-                <tr key={f.id} className={`border-t border-borde ${f.activo ? "" : "opacity-55"}`}>
+                <tr key={f.id} className={`border-t border-line ${f.activo ? "" : "opacity-55"}`}>
                   <td className="px-2 py-1.5">
                     <Texto key={`${f.id}-${f.nombre}-${intento}`} valor={f.nombre} etiqueta="Nombre" className={`${celda} font-medium`} onGuardar={(v) => v && cambiar(f.id, { nombre: mayus(v) })} />
                   </td>
@@ -156,17 +156,17 @@ function Agregar({ conCategoria, onAgregar }: { conCategoria: boolean; onAgregar
         setSubcategoria("");
       }}
     >
-      <label className="block min-w-60 flex-1 text-sm font-medium text-texto-2">
+      <label className="block min-w-60 flex-1 text-sm font-medium text-ink-2">
         Nuevo
         <input className={`mt-1 ${campo}`} value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" />
       </label>
       {conCategoria && (
         <>
-          <label className="block w-48 text-sm font-medium text-texto-2">
+          <label className="block w-48 text-sm font-medium text-ink-2">
             Categoría
             <input className={`mt-1 ${campo}`} value={categoria} onChange={(e) => setCategoria(e.target.value)} />
           </label>
-          <label className="block w-48 text-sm font-medium text-texto-2">
+          <label className="block w-48 text-sm font-medium text-ink-2">
             Subcategoría
             <input className={`mt-1 ${campo}`} value={subcategoria} onChange={(e) => setSubcategoria(e.target.value)} />
           </label>

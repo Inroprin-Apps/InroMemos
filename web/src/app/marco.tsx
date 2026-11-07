@@ -9,16 +9,20 @@ import { useEnLinea } from "@/lib/conexion";
 import { procesarCola } from "@/lib/envio";
 import { cuentas } from "@/lib/cuentas";
 import { useBarraContraida } from "@/lib/preferencias";
+import { espera, useContextoMemos, useMemos } from "@/lib/memos";
 import { EN_CURSO, tituloRendicion, useRendiciones } from "@/lib/rendiciones";
 import { entrar, salir, useSesion, type Persona } from "@/lib/sesion";
 import {
+  IconoAjustes,
   IconoBandeja,
+  IconoCheck,
   IconoCaja,
   IconoDerecha,
   IconoInicio,
   IconoIzquierda,
   IconoLista,
   IconoMas,
+  IconoMemo,
   IconoNube,
   IconoPersonas,
   IconoReportes,
@@ -30,7 +34,20 @@ import { NuevaRendicion } from "./nueva-rendicion";
 import { Aviso, botonPrincipal } from "./piezas";
 
 /** Qué está abierto, para marcarlo en la barra: una sección o el id de una rendición. */
-export type Activo = "inicio" | "bandeja" | "cajas" | "catalogos" | "personas" | "reportes" | "drive" | (string & {});
+export type Activo =
+  | "inicio"
+  | "memos"
+  | "emitir"
+  | "memos-config"
+  | "kpis"
+  | "cuentas"
+  | "bandeja"
+  | "cajas"
+  | "catalogos"
+  | "personas"
+  | "reportes"
+  | "drive"
+  | (string & {});
 
 /**
  * Toda página con datos pasa por acá: si no hay sesión muestra el ingreso, y
@@ -52,7 +69,7 @@ export function ConSesion({
   if (sesion.estado === "cargando") {
     return (
       <main className="flex flex-1 items-center justify-center p-6">
-        <p className="text-texto-3" role="status">
+        <p className="text-ink-3" role="status">
           Abriendo InroScan…
         </p>
       </main>
@@ -124,6 +141,7 @@ function Armazon({
 
 const ADMIN: { clave: Activo; texto: string; href: string; Icono: (p: { className?: string }) => ReactNode }[] = [
   { clave: "bandeja", texto: "Bandeja de revisión", href: "/bandeja/", Icono: IconoBandeja },
+  { clave: "memos-config", texto: "Áreas y permisos de memos", href: "/memos/configuracion/", Icono: IconoAjustes },
   { clave: "cajas", texto: "Cajas chicas", href: "/cajas/", Icono: IconoCaja },
   { clave: "catalogos", texto: "Catálogos", href: "/catalogos/", Icono: IconoLista },
   { clave: "personas", texto: "Personas", href: "/personas/", Icono: IconoPersonas },
@@ -131,10 +149,37 @@ const ADMIN: { clave: Activo; texto: string; href: string; Icono: (p: { classNam
   { clave: "drive", texto: "Drive", href: "/drive/", Icono: IconoNube },
 ];
 
+// Ítem del menú: 13.5px, 600, esquina de botón grande; activo en azul suave.
 const enlace = (activo: boolean) =>
-  `flex min-h-10 items-center gap-2.5 rounded-chico px-2.5 text-sm transition ${
-    activo ? "bg-acento-suave font-semibold text-acento-texto" : "font-medium text-texto-2 hover:bg-superficie-2"
+  `flex min-h-10 items-center gap-2.5 rounded-button-lg px-2.5 text-[13.5px] font-semibold transition ${
+    activo ? "bg-primary-soft text-primary-strong" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
   }`;
+
+const grupo = "mb-1 px-2.5 text-[11px] font-bold uppercase tracking-[0.07em] text-ink-3";
+
+/** INRO en tinta y SCAN en azul fuerte, como INRO·CONTA. */
+export function Marca({ className = "text-[15px]" }: { className?: string }) {
+  return (
+    <span className={`font-bold text-ink ${className}`}>
+      INRO<span className="text-primary-strong">SCAN</span>
+    </span>
+  );
+}
+
+/** Insignia del menú: roja si espera algo de ti. */
+function Insignia({ n }: { n: number }) {
+  if (!n) return null;
+  return (
+    <span className="ml-auto rounded-full bg-danger px-1.75 py-px text-[11px] font-bold tabular-nums text-on-fill">{n}</span>
+  );
+}
+
+/** Cuántos memos esperan algo de quien está dentro (aprobar, dar cargo, corregir). */
+function useMemosPorAtender(persona: Persona): number {
+  const { memos } = useMemos();
+  const { contexto } = useContextoMemos(persona.correo);
+  return (memos ?? []).filter((m) => espera(m, persona, contexto?.permisos ?? null)).length;
+}
 
 function BarraLateral({
   persona,
@@ -157,19 +202,24 @@ function BarraLateral({
     (r) => r.responsable_id === persona.id && (EN_CURSO as readonly string[]).includes(r.estado),
   );
   const porRevisar = (rendiciones ?? []).filter((r) => r.estado === "enviada").length;
+  const porAtender = useMemosPorAtender(persona);
+  const permisosMemo = useContextoMemos(persona.correo).contexto?.permisos;
 
   if (contraida) {
     return (
       <nav
         aria-label="Navegación principal"
-        className="sticky top-0 hidden h-dvh w-16 shrink-0 flex-col items-center gap-2 border-r border-borde bg-superficie py-4 md:flex"
+        className="sticky top-0 hidden h-dvh w-16 shrink-0 flex-col items-center gap-2 border-r border-line bg-surface py-4 md:flex"
       >
         <Link href="/" aria-label="InroScan, inicio" className="mb-2">
           <Image src={ruta("inroprin-marca.svg")} alt="" width={28} height={28} />
         </Link>
-        <button type="button" onClick={onNueva} aria-label="Nueva rendición" title="Nueva rendición" className="flex h-11 w-11 items-center justify-center rounded-chico bg-acento-texto text-white">
+        <Link href="/memos/" aria-label="Panel de memos" title="Panel de memos" className={`${enlace(activo === "memos")} h-11 w-11 justify-center px-0`}>
+          <IconoMemo />
+        </Link>
+        <Link href="/memos/emitir/" aria-label="Emitir memo" title="Emitir memo" className={`${enlace(activo === "emitir")} h-11 w-11 justify-center px-0`}>
           <IconoMas />
-        </button>
+        </Link>
         <Link href="/" aria-label="Mis rendiciones" title="Mis rendiciones" className={`${enlace(activo === "inicio")} h-11 w-11 justify-center px-0`}>
           <IconoInicio />
         </Link>
@@ -180,7 +230,7 @@ function BarraLateral({
             </Link>
           ))}
         {onAlternar && (
-          <button type="button" onClick={onAlternar} aria-label="Expandir la barra" title="Expandir la barra" className="mt-auto flex h-11 w-11 items-center justify-center rounded-chico text-texto-2 hover:bg-superficie-2">
+          <button type="button" onClick={onAlternar} aria-label="Expandir la barra" title="Expandir la barra" className="mt-auto flex h-11 w-11 items-center justify-center rounded-control text-ink-2 hover:bg-surface-2">
             <IconoDerecha />
           </button>
         )}
@@ -191,33 +241,63 @@ function BarraLateral({
   return (
     <nav
       aria-label="Navegación principal"
-      className="sticky top-0 hidden h-dvh w-62 shrink-0 flex-col gap-5 overflow-y-auto border-r border-borde bg-superficie px-3.5 py-5 md:flex"
+      className="sticky top-0 hidden h-dvh w-63 shrink-0 flex-col gap-5 overflow-y-auto border-r border-line bg-surface px-3.5 py-5 md:flex"
     >
       <div className="flex items-center gap-2.5 px-1.5">
         <Link href="/" className="flex items-center gap-2.5">
           <Image src={ruta("inroprin-marca.svg")} alt="" width={28} height={28} />
-          <span className="font-display text-lg font-bold text-tinta">InroScan</span>
+          <span className="flex flex-col leading-tight">
+            <Marca />
+            <span className="text-[12px] text-ink-3">Memos y rendiciones</span>
+          </span>
         </Link>
         {onAlternar && (
-          <button type="button" onClick={onAlternar} aria-label="Contraer la barra" title="Contraer la barra" className="ml-auto flex h-8 w-8 items-center justify-center rounded-chico text-texto-2 hover:bg-superficie-2">
+          <button type="button" onClick={onAlternar} aria-label="Contraer la barra" title="Contraer la barra" className="ml-auto flex h-8 w-8 items-center justify-center rounded-control text-ink-2 hover:bg-surface-2">
             <IconoIzquierda className="h-4.5 w-4.5" />
           </button>
         )}
       </div>
 
-      <button type="button" onClick={onNueva} className={`flex items-center justify-center gap-2 ${botonPrincipal}`}>
-        <IconoMas className="h-4.5 w-4.5" />
-        Nueva rendición
-      </button>
+      <div className="flex flex-col gap-0.5">
+        <p className={grupo}>Memorandums</p>
+        <Link href="/memos/" className={enlace(activo === "memos")}>
+          <IconoMemo className="h-4.25 w-4.25" />
+          Panel de memos
+          <Insignia n={porAtender} />
+        </Link>
+        <Link href="/memos/emitir/" className={enlace(activo === "emitir")}>
+          <IconoMas className="h-4.25 w-4.25" />
+          Emitir memo
+        </Link>
+        {(persona.es_administracion || permisosMemo?.verKpis) && (
+          <Link href="/memos/kpis/" className={enlace(activo === "kpis")}>
+            <IconoReportes className="h-4.25 w-4.25" />
+            Métricas y KPIs
+          </Link>
+        )}
+        {(persona.es_administracion || permisosMemo?.verificaCuentas) && (
+          <Link href="/memos/cuentas/" className={enlace(activo === "cuentas")}>
+            <IconoCheck className="h-4.25 w-4.25" />
+            Cuentas por verificar
+          </Link>
+        )}
+      </div>
 
-      <Link href="/" className={enlace(activo === "inicio")}>
-        <IconoInicio className="h-4.5 w-4.5" />
-        Mis rendiciones
-      </Link>
+      <div className="flex flex-col gap-0.5">
+        <p className={grupo}>Rendiciones</p>
+        <Link href="/" className={enlace(activo === "inicio")}>
+          <IconoInicio className="h-4.25 w-4.25" />
+          Mis rendiciones
+        </Link>
+        <button type="button" onClick={onNueva} className={enlace(false)}>
+          <IconoMas className="h-4.25 w-4.25" />
+          Nueva rendición
+        </button>
+      </div>
 
       {mias.length > 0 && (
         <div className="flex flex-col gap-1">
-          <p className="px-2.5 text-[11px] font-bold uppercase tracking-wider text-texto-3">En curso</p>
+          <p className={grupo}>En curso</p>
           {mias.map((r) => {
             const c = cuentas(r.comprobantes, r.monto, r.no_sustentan ?? []);
             const observada = r.estado === "observada";
@@ -225,19 +305,19 @@ function BarraLateral({
               <Link
                 key={r.id}
                 href={`/rendicion/?id=${r.id}`}
-                className={`flex flex-col gap-1.5 rounded-chico px-2.5 py-2 text-[13px] ${
-                  activo === r.id ? "bg-acento-suave font-semibold text-acento-texto" : "font-medium text-texto-2 hover:bg-superficie-2"
+                className={`flex flex-col gap-1.5 rounded-control px-2.5 py-2 text-[13px] ${
+                  activo === r.id ? "bg-primary-soft font-semibold text-primary-strong" : "font-medium text-ink-2 hover:bg-surface-2"
                 }`}
               >
                 <span className="flex justify-between gap-2">
                   <span className="truncate">{tituloRendicion(r)}</span>
-                  <span className={`shrink-0 text-xs ${observada ? "font-bold text-peligro" : r.estado === "enviada" ? "text-aviso" : "text-texto-3"}`}>
+                  <span className={`shrink-0 text-xs ${observada ? "font-bold text-danger-strong" : r.estado === "enviada" ? "text-warning-strong" : "text-ink-3"}`}>
                     {observada ? "Observada" : r.estado === "enviada" ? "Enviada" : `${c.consumo ?? 0} %`}
                   </span>
                 </span>
-                <span className="h-1 overflow-hidden rounded-full bg-borde">
+                <span className="h-1 overflow-hidden rounded-full bg-line">
                   <span
-                    className={`block h-full ${observada ? "bg-peligro" : "bg-acento"}`}
+                    className={`block h-full ${observada ? "bg-danger" : "bg-primary"}`}
                     style={{ width: `${Math.min(c.consumo ?? 0, 100)}%` }}
                   />
                 </span>
@@ -249,13 +329,13 @@ function BarraLateral({
 
       {persona.es_administracion && (
         <div className="flex flex-col gap-0.5">
-          <p className="mb-1 px-2.5 text-[11px] font-bold uppercase tracking-wider text-texto-3">Administración</p>
+          <p className={grupo}>Administración</p>
           {ADMIN.map((a) => (
             <Link key={a.clave} href={a.href} className={enlace(activo === a.clave)}>
               <a.Icono className="h-4.5 w-4.5" />
               {a.texto}
               {a.clave === "bandeja" && porRevisar > 0 && (
-                <span className="ml-auto flex h-5.5 min-w-5.5 items-center justify-center rounded-full bg-aviso-suave px-1.5 text-xs font-bold text-aviso">
+                <span className="ml-auto flex h-5.5 min-w-5.5 items-center justify-center rounded-full bg-warning-soft px-1.5 text-xs font-bold text-warning-strong">
                   {porRevisar}
                 </span>
               )}
@@ -265,16 +345,16 @@ function BarraLateral({
       )}
 
       {enCola > 0 && (
-        <button type="button" onClick={onCola} className="mt-auto flex items-center gap-2 rounded-chico bg-aviso-suave px-2.5 py-2 text-left text-[13px] font-semibold text-aviso">
+        <button type="button" onClick={onCola} className="mt-auto flex items-center gap-2 rounded-control bg-warning-soft px-2.5 py-2 text-left text-[13px] font-semibold text-warning-strong">
           <IconoSubir className="h-4 w-4" />
           {enCola} por subir
         </button>
       )}
-      <div className={`${enCola > 0 ? "" : "mt-auto "}flex items-center gap-2.5 border-t border-borde px-1.5 pt-3.5`}>
+      <div className={`${enCola > 0 ? "" : "mt-auto "}flex items-center gap-2.5 border-t border-line px-1.5 pt-3.5`}>
         <Iniciales persona={persona} />
         <span className="flex min-w-0 flex-col">
-          <span className="truncate text-sm font-semibold text-texto">{persona.nombre || persona.correo}</span>
-          <span className="text-xs text-texto-3">{persona.es_administracion ? "Administración" : persona.correo}</span>
+          <span className="truncate text-sm font-semibold text-ink">{persona.nombre || persona.correo}</span>
+          <span className="text-xs text-ink-3">{persona.es_administracion ? "Administración" : persona.correo}</span>
         </span>
         <BotonSalir />
       </div>
@@ -289,7 +369,7 @@ function Iniciales({ persona }: { persona: Persona }) {
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("");
   return (
-    <span aria-hidden="true" className="flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-full bg-acento-suave text-[13px] font-bold text-acento-texto">
+    <span aria-hidden="true" className="flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-full bg-primary-soft text-[13px] font-bold text-primary-strong">
       {iniciales}
     </span>
   );
@@ -309,8 +389,8 @@ function BotonSalir({ conTexto }: { conTexto?: boolean }) {
       title="Salir"
       className={
         conTexto
-          ? "flex flex-col items-center gap-0.5 text-[11px] font-semibold text-texto-2"
-          : "ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-chico border border-borde-2 text-texto-2 hover:bg-superficie-2 disabled:opacity-60"
+          ? "flex flex-col items-center gap-0.5 text-[11px] font-semibold text-ink-2"
+          : "ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-control text-ink-2 hover:bg-surface-2 disabled:bg-disabled disabled:text-disabled-ink"
       }
     >
       <IconoSalir className={conTexto ? "h-5.5 w-5.5" : "h-4 w-4"} />
@@ -321,12 +401,12 @@ function BotonSalir({ conTexto }: { conTexto?: boolean }) {
 
 function CabeceraMovil({ persona }: { persona: Persona }) {
   return (
-    <header className="flex items-center gap-2.5 border-b border-borde bg-superficie px-4 py-3 md:hidden">
+    <header className="flex items-center gap-2.5 border-b border-line bg-surface px-4 py-3 md:hidden">
       <Link href="/" className="flex items-center gap-2">
         <Image src={ruta("inroprin-marca.svg")} alt="" width={26} height={26} />
-        <span className="font-display font-bold text-tinta">InroScan</span>
+        <Marca />
       </Link>
-      <span className="ml-auto truncate text-sm text-texto-2">{persona.nombre || persona.correo}</span>
+      <span className="ml-auto truncate text-sm text-ink-2">{persona.nombre || persona.correo}</span>
     </header>
   );
 }
@@ -344,12 +424,16 @@ function NavInferior({
 }) {
   const enCola = usePendientes().length;
   const item = (on: boolean) =>
-    `flex min-w-16 flex-col items-center gap-0.5 text-[11px] font-semibold ${on ? "text-acento-texto" : "text-texto-2"}`;
+    `flex min-w-16 flex-col items-center gap-0.5 text-[11px] font-semibold ${on ? "text-primary-strong" : "text-ink-2"}`;
   return (
     <nav
       aria-label="Navegación"
-      className="fixed inset-x-0 bottom-0 z-30 flex h-17 items-center justify-around border-t border-borde bg-superficie pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 flex h-17 items-center justify-around border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
     >
+      <Link href="/memos/" className={item(activo === "memos" || activo === "emitir")}>
+        <IconoMemo className="h-5.5 w-5.5" />
+        Memos
+      </Link>
       <Link href="/" className={item(activo === "inicio")}>
         <IconoInicio className="h-5.5 w-5.5" />
         Rendiciones
@@ -362,7 +446,7 @@ function NavInferior({
         <button type="button" onClick={onCola} className={item(false)}>
           <span className="relative flex">
             <IconoSubir className="h-5.5 w-5.5" />
-            <span className="absolute -right-3 -top-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-peligro px-1 text-[10px] font-bold text-white">
+            <span className="absolute -right-3 -top-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-on-fill">
               {enCola}
             </span>
           </span>
@@ -397,10 +481,10 @@ function Ingreso({ aviso }: { aviso: string | null }) {
 
   return (
     <main className="flex flex-1 items-center justify-center p-4 sm:p-6">
-      <section className="w-full max-w-md rounded-grande bg-superficie p-6 shadow-sm sm:p-8">
+      <section className="w-full max-w-md rounded-card border border-control bg-surface p-6 sm:p-8">
         <Image src={ruta("inroprin.svg")} alt="INROPRIN" width={183} height={41} priority />
-        <h1 className="mt-6 font-display text-2xl font-bold text-tinta">InroScan</h1>
-        <p className="mt-2 text-texto-2">Rendiciones de caja chica y memos de viáticos.</p>
+        <h1 className="mt-6 text-2xl font-bold text-ink">InroScan</h1>
+        <p className="mt-2 text-ink-2">Rendiciones de caja chica y memos de viáticos.</p>
 
         {(aviso || falla) && (
           <div className="mt-5">
@@ -411,7 +495,7 @@ function Ingreso({ aviso }: { aviso: string | null }) {
         <button type="button" onClick={ir} disabled={yendo} className={`mt-6 w-full py-3 ${botonPrincipal}`}>
           {yendo ? "Abriendo Google…" : "Entrar con Google"}
         </button>
-        <p className="mt-3 text-center text-sm text-texto-3">Solo cuentas @inroprin.com</p>
+        <p className="mt-3 text-center text-sm text-ink-3">Solo cuentas @inroprin.com</p>
 
       </section>
     </main>
@@ -430,34 +514,34 @@ function PorSubir({ onCerrar }: { onCerrar: () => void }) {
   const grupos = [...new Set(pendientes.map((p) => p.rendicionId))];
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-tinta/40 sm:items-center sm:p-4" onClick={onCerrar}>
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-ink/40 sm:items-center sm:p-4" onClick={onCerrar}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="cola-titulo"
-        className="w-full max-w-md rounded-t-grande bg-superficie p-5 shadow-xl sm:rounded-grande"
+        className="w-full max-w-md rounded-t-card bg-surface p-5 shadow-card sm:rounded-card"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="cola-titulo" className="font-display text-lg font-bold text-tinta">
+        <h2 id="cola-titulo" className="text-lg font-bold text-ink">
           Por subir
         </h2>
         {!enLinea && (
-          <p className="mt-3 flex gap-2.5 rounded-chico bg-aviso-suave px-3 py-2.5 text-sm text-aviso">
+          <p className="mt-3 flex gap-2.5 rounded-control bg-warning-soft px-3 py-2.5 text-sm text-warning-strong">
             <IconoSinSenal className="mt-0.5 h-5 w-5 shrink-0" />
             Sin señal. Las fotos están guardadas en este teléfono y se suben solas cuando vuelva la conexión.
           </p>
         )}
         {pendientes.length === 0 ? (
-          <p className="mt-3 text-texto-2">Todo subido.</p>
+          <p className="mt-3 text-ink-2">Todo subido.</p>
         ) : (
           <ul className="mt-3 space-y-2">
             {grupos.map((id) => {
               const deEsta = pendientes.filter((p) => p.rendicionId === id);
               return (
                 <li key={id}>
-                  <Link href={`/rendicion/?id=${id}`} onClick={onCerrar} className="flex justify-between gap-3 rounded-chico border border-borde px-3 py-2.5">
+                  <Link href={`/rendicion/?id=${id}`} onClick={onCerrar} className="flex justify-between gap-3 rounded-control border border-line px-3 py-2.5">
                     <span className="font-semibold">{titulo(id)}</span>
-                    <span className="text-sm text-texto-2">
+                    <span className="text-sm text-ink-2">
                       {deEsta.length} foto{deEsta.length === 1 ? "" : "s"}
                       {deEsta.some((p) => p.bloqueado) ? " · con error" : ""}
                     </span>
@@ -467,12 +551,12 @@ function PorSubir({ onCerrar }: { onCerrar: () => void }) {
             })}
           </ul>
         )}
-        <p className="mt-4 text-[13px] text-texto-3">En iPhone, abre la app cuando tengas internet para que se suba todo.</p>
+        <p className="mt-4 text-[13px] text-ink-3">En iPhone, abre la app cuando tengas internet para que se suba todo.</p>
         <div className="mt-4 flex gap-2">
           <button type="button" className={`flex-1 ${botonPrincipal}`} disabled={!enLinea || !pendientes.length} onClick={() => procesarCola()}>
             Subir ahora
           </button>
-          <button type="button" className="rounded-chico border border-borde-2 px-4 font-medium text-texto-2" onClick={onCerrar}>
+          <button type="button" className="rounded-control border border-control px-4 font-medium text-ink-2" onClick={onCerrar}>
             Cerrar
           </button>
         </div>
