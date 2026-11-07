@@ -55,7 +55,8 @@ export function Resumen({
   onGuardar: (cambios: CambiosRendicion) => void;
 }) {
   const empresa = catalogos.empresas.find((e) => e.id === r.empresa_id)?.nombre ?? "—";
-  const memoEditable = editable && r.tipo === "memo";
+  // Lo que viene de una entrega de la plataforma no se cambia a mano.
+  const memoEditable = editable && r.tipo === "memo" && !r.linea_entrega_id;
   const k = (campo: string, valor: unknown) => `${campo}-${String(valor)}-${intento}`;
   const fuera = new Set(r.no_sustentan ?? []);
   const pasado = c.consumo != null && c.consumo > 100;
@@ -98,8 +99,13 @@ export function Resumen({
       <Dato titulo="Empresa" className={plegable}>
         <span className="font-semibold">{empresa}</span>
       </Dato>
-      <Dato titulo={r.tipo === "caja" ? "Administrador de caja" : "Responsable"} className={plegable}>
-        <span className="font-semibold">{responsable}</span>
+      <Dato titulo={r.tipo === "caja" ? "Administrador de caja" : r.beneficiario ? "A nombre de" : "Responsable"} className={plegable}>
+        <span className="font-semibold">{r.beneficiario || responsable}</span>
+        {r.beneficiario && r.beneficiario_doc !== undefined && (
+          <span className="block text-xs text-ink-3">
+            DNI {r.beneficiario_doc} · rinde {responsable}
+          </span>
+        )}
       </Dato>
 
       <div className={`col-span-full h-px bg-line ${plegable}`} />

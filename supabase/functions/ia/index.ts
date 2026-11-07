@@ -9,6 +9,7 @@
 // Secretos: GEMINI_API_KEY (ya existe) y opcionalmente GEMINI_MODELO.
 
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
+import { periodoViaje } from "../drive/memo.ts";
 import { encodeBase64 } from "jsr:@std/encoding@1.0.10/base64";
 import {
   type Contexto,
@@ -88,7 +89,10 @@ Deno.serve(async (req) => {
         await Promise.all([
           db.from("tipos_memo").select("nombre, familia").eq("codigo", m.tipo_codigo).single(),
           db.from("unidades").select("nombre, empresa:empresas(nombre)").eq("id", m.unidad_id).single(),
-          db.from("lineas_pago").select("beneficiario, concepto_id, monto, moneda, serie, numero").eq("memo_id", m.id)
+          db.from("lineas_pago").select(
+            "beneficiario, concepto_id, monto, moneda, serie, numero, viaje_desde, viaje_hasta",
+          )
+            .eq("memo_id", m.id)
             .order("orden"),
           // Memos anteriores del mismo tipo y NORMALES (nunca reservados): estilo, no datos.
           db.from("memos").select("asunto, cuerpo").eq("tipo_codigo", m.tipo_codigo).eq("confidencialidad", "normal")
@@ -106,12 +110,14 @@ Deno.serve(async (req) => {
         destinatario: m.destinatario_nombre || m.destinatario_correo,
         llevaPago: m.requiere_pago,
         reservado: m.confidencialidad !== "normal",
+        entrega: m.tipo_codigo === "RR-EVI",
         lineas: (lineas ?? []).map((l) => ({
           beneficiario: l.beneficiario,
           concepto: nombreConcepto.get(l.concepto_id) ?? "",
           monto: Number(l.monto) || 0,
           moneda: l.moneda,
           comprobante: l.numero ? `${l.serie}-${l.numero}` : "",
+          periodo: periodoViaje(l.viaje_desde, l.viaje_hasta),
         })),
         ejemplos: (ejemplos ?? []).map((e) => ({ asunto: e.asunto, cuerpo: String(e.cuerpo).slice(0, 800) })),
       };

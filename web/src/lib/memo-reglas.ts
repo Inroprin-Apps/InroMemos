@@ -93,6 +93,17 @@ export function enmascarar(cuenta: string): string {
 }
 
 /**
+ * El periodo de un viaje como va en el memo: «03/11 al 08/11/2026» (el año una
+ * vez si es el mismo), «desde el 03/11/2026» si falta el fin, «» si no hay.
+ */
+export function periodoViaje(desde: string | null, hasta: string | null): string {
+  const f = (iso: string) => iso.split("-").reverse().join("/");
+  if (!desde) return hasta ? `hasta el ${f(hasta)}` : "";
+  if (!hasta) return `desde el ${f(desde)}`;
+  return desde.slice(0, 4) === hasta.slice(0, 4) ? `${f(desde).slice(0, 5)} al ${f(hasta)}` : `${f(desde)} al ${f(hasta)}`;
+}
+
+/**
  * «F001-599», « f001 - 00000599 » → serie F001, número 00000599 (8 cifras),
  * y la clave sin ceros para encontrar repetidos (F001-599).
  */

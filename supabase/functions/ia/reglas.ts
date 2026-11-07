@@ -11,7 +11,17 @@ export type Contexto = {
   destinatario: string;
   llevaPago: boolean;
   reservado: boolean;
-  lineas: { beneficiario: string; concepto: string; monto: number; moneda: string; comprobante: string }[];
+  /** Entrega de viáticos ANTES del viaje: se pide el dinero, todavía no hay gastos. */
+  entrega?: boolean;
+  lineas: {
+    beneficiario: string;
+    concepto: string;
+    monto: number;
+    moneda: string;
+    comprobante: string;
+    /** Solo en la entrega: «03/11 al 08/11/2026». */
+    periodo?: string;
+  }[];
   ejemplos: { asunto: string; cuerpo: string }[];
 };
 
@@ -36,8 +46,8 @@ export function hechos(c: Contexto): string {
     `Total: ${dinero(total, moneda)} en ${c.lineas.length} pago(s).`,
     ...c.lineas.slice(0, 15).map((l) =>
       `- ${l.beneficiario || "(sin beneficiario)"}${l.comprobante ? `, ${l.comprobante}` : ""}${
-        l.concepto ? `, ${l.concepto}` : ""
-      }: ${dinero(l.monto, l.moneda)}`
+        l.periodo ? `, viaje del ${l.periodo}` : ""
+      }${l.concepto ? `, ${l.concepto}` : ""}: ${dinero(l.monto, l.moneda)}`
     ),
   ].join("\n");
 }
@@ -52,6 +62,11 @@ Reglas estrictas:
 - Empieza con «Me dirijo a usted a fin de…» o similar.
 ${c.llevaPago ? `- Lleva pago: termina el cuerpo con «${CIERRE}»` : "- No lleva pago: no menciones pagos."}
 ${c.reservado ? "- Es RESERVADO: no nombres personas, solo totales." : ""}
+${
+    c.entrega
+      ? "- Es una ENTREGA DE VIÁTICOS A RENDIR, antes del viaje: redacta como solicitud de asignación («solicito la asignación de viáticos…», qué cubrirán y el periodo), nunca como reembolso de gastos ya hechos. Termina pidiendo «proceder con el depósito de los montos indicados»."
+      : ""
+  }
 - Asunto de hasta 140 caracteres, concreto (qué, de qué y para qué proyecto si lo hay).
 - Devuelve solo JSON: {"asunto": "...", "cuerpo": "..."}.
 
@@ -80,6 +95,15 @@ export const ESQUEMA_REDACCION = {
 export function plantilla(c: Contexto): Redaccion {
   const idea = c.idea.trim().replace(/\.$/, "");
   const asunto = (idea.charAt(0).toUpperCase() + idea.slice(1)).slice(0, 140) || c.tipo;
+  if (c.entrega) {
+    return {
+      asunto,
+      cuerpo: `Me dirijo a usted a fin de solicitar la asignación de viáticos para ${
+        idea.charAt(0).toLowerCase() + idea.slice(1)
+      }, según el detalle de personas, fechas y montos que se indica. Los gastos se rendirán con sus comprobantes al término del viaje.\n\nFavor de proceder con el depósito de los montos indicados.`,
+      fuente: "PLANTILLA",
+    };
+  }
   const que = c.llevaPago
     ? `solicitar el pago de ${idea.charAt(0).toLowerCase() + idea.slice(1)}`
     : `comunicarle ${idea}`;

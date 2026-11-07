@@ -60,6 +60,13 @@ regla de que **el servidor decide; la pantalla solo muestra**.
 - **Cruces con INROCONTA:** proveedor en la lista **SSCO** → no se envía; no habido o de baja → aviso; factura que **no está en el SIRE**, con **monto distinto** o **ya en CONCAR** → aviso.
 - **El puente con las rendiciones:** `memo_desde_rendicion()` convierte una rendición aprobada en su memo de pago ya armado (caja chica → `RR-CCH` reposición; viáticos → `RR-VIA` reembolso de lo gastado de más).
 
+**Viáticos en dos momentos** (migración `…_viaticos_entrega.sql`, 7-nov-2026), como los memos de Word de hoy:
+
+- **Antes del viaje:** la jefatura emite «Entrega de viáticos (a rendir)» (`RR-EVI`), una línea por persona con las fechas del viaje. Aprueba el jefe del área (lógica de Franco) y entra a la cola de pagos.
+- **Después:** una rendición **por persona**. La hace quien recibió el dinero si tiene cuenta @inroprin.com (se le reconoce por su DNI); si no tiene cuenta (personal de campo), la hace la jefatura que emitió el memo, **a nombre de esa persona**.
+- **Si gastó de más:** «Reembolso de viáticos» (`RR-VIA`) paga a la persona que viajó, no a quien rindió. Si gastó de menos, devuelve la diferencia.
+- Una línea que ya se está rindiendo no cambia de persona, monto ni empresa, aunque Análisis devuelva el memo.
+
 **App** (`web/src/app/memos/`): Panel de memos, Emitir memo, el memo (editor con vista previa del papel y detalle con aprobar / observar / dar cargo / anular, y bitácora), Áreas y permisos de memos (con la tarjeta Datos de INROCONTA), y el botón «Pedir el pago con un memo» en cada rendición aprobada.
 
 **Función** `supabase/functions/inroconta/`: trae padrón, SSCO y SIRE de INROCONTA, con sus pruebas.

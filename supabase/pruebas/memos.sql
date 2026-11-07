@@ -42,7 +42,8 @@ select id as rrhh from unidades where codigo = 'RRHH' and empresa_id = :inroprin
 select extract(year from now() at time zone 'America/Lima')::int as anio \gset
 select id as concepto from conceptos order by id limit 1 \gset
 
-select pruebas.ok((select count(*) from tipos_memo) = 53, 'los 53 tipos de memo de la hoja de configuración');
+select pruebas.ok((select count(*) from tipos_memo where codigo <> 'RR-EVI') = 53, 'los 53 tipos de memo de la hoja de configuración');
+select pruebas.ok((select nombre = 'Entrega de viáticos (a rendir)' from tipos_memo where codigo = 'RR-EVI'), 'más la entrega de viáticos, separada del reembolso');
 select pruebas.ok((select codigo = 'INR' from empresas where id = :inroprin), 'INROPRIN tiene su código corto');
 select pruebas.ok((select count(*) from unidades where empresa_id = :inroprin) = 9, 'las 9 áreas emisoras de INROPRIN');
 

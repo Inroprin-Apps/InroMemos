@@ -55,3 +55,24 @@ Deno.test("cruce del sustento con las líneas", () => {
   ]);
   assertEquals(cruzar({ ...leido, tipo: "contrato" }, lineas), []);
 });
+
+Deno.test("la entrega de viáticos se pide como asignación, con el periodo del viaje", () => {
+  const e: Contexto = {
+    ...c,
+    idea: "la instalación del paquete 8 en Puno",
+    entrega: true,
+    lineas: [{
+      beneficiario: "Zenón Campo",
+      concepto: "Viáticos",
+      monto: 905,
+      moneda: "PEN",
+      comprobante: "",
+      periodo: "03/11 al 08/11/2026",
+    }],
+  };
+  assertStringIncludes(promptRedaccion(e), "ENTREGA DE VIÁTICOS A RENDIR");
+  assertStringIncludes(hechos(e), "viaje del 03/11 al 08/11/2026");
+  const p = plantilla(e);
+  assertStringIncludes(p.cuerpo, "solicitar la asignación de viáticos para la instalación del paquete 8 en Puno");
+  assertStringIncludes(p.cuerpo, "proceder con el depósito");
+});

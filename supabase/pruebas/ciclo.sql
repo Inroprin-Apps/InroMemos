@@ -25,33 +25,68 @@ reset role; select pruebas.como('emi@inroprin.com');
 select pruebas.falla($$select guardar_mi_dni('45678913')$$, 'un DNI no se repite entre personas');
 select guardar_mi_dni('45678914');
 
-\echo '\n· Ciclo: memo de entrega de viáticos → rendición'
+\echo '\n· Ciclo: entrega de viáticos → una rendición por persona'
 
 insert into memos (unidad_id, tipo_codigo, asunto, cuerpo, destinatario_correo)
-values (:finanzas, 'RR-VIA', 'Viáticos de Dora a Arequipa', 'Texto', 'jefa@inroprin.com') returning id as entrega \gset
-insert into lineas_pago (memo_id, empresa_pagadora_id, beneficiario_doc, beneficiario, concepto_id, monto)
-values (:'entrega', :inroprin, '45678913', 'Dora Destino', :concepto, 600);
+values (:finanzas, 'RR-EVI', 'Viáticos de Dora y Zenón a Arequipa', 'Texto', 'jefa@inroprin.com') returning id as entrega \gset
+insert into lineas_pago (memo_id, orden, empresa_pagadora_id, beneficiario_doc, beneficiario, concepto_id, monto, viaje_desde, viaje_hasta)
+values (:'entrega', 1, :inroprin, '45678913', 'Dora Destino', :concepto, 600, '2026-11-03', '2026-11-08') returning id as linea_dora \gset
+insert into lineas_pago (memo_id, orden, empresa_pagadora_id, beneficiario_doc, beneficiario, concepto_id, monto)
+values (:'entrega', 2, :inroprin, '70000001', 'Zenón Campo', :concepto, 450) returning id as linea_zenon \gset
+select pruebas.falla(format($$update lineas_pago set viaje_hasta = '2026-11-01' where id = %L$$, :'linea_dora'),
+  'el viaje no termina antes de empezar');
 select emitir_memo(:'entrega');
 reset role; select pruebas.como('jefa@inroprin.com');
 select aprobar_memo(:'entrega');
 
 reset role; select pruebas.como('dora@inroprin.com');
-select pruebas.ok((select count(*) = 1 and min(monto) = 600 from memos_para_rendir()), 'Dora ve el memo que le entregó S/ 600 para rendir');
+select pruebas.ok((select count(*) = 1 and min(monto) = 600 and not bool_or(a_nombre_de_otro) from memos_para_rendir()),
+  'Dora (tiene cuenta y DNI) ve solo su parte, S/ 600, para rendirla ella');
 select pruebas.ok((select count(*) from memos where id = :'entrega') = 1 and (select count(*) from lineas_pago where memo_id = :'entrega') = 1,
-  'quien recibe dinero por un memo lo ve, con su línea');
-insert into rendiciones (tipo, numero_memo, empresa_id, responsable_id, monto, memo_entrega_id)
-values ('memo', 'lo que sea', :inroprin, :'dora', 1, :'entrega') returning id as rinde \gset
+  'quien recibe dinero por un memo lo ve, solo con su línea');
+insert into rendiciones (tipo, numero_memo, empresa_id, responsable_id, monto, linea_entrega_id)
+values ('memo', 'lo que sea', :inroprin, :'dora', 1, :'linea_dora') returning id as rinde \gset
 select pruebas.ok((select numero_memo = (select numero_visible from memos where id = :'entrega') and monto = 600
+                          and memo_entrega_id = :'entrega' and beneficiario = 'Dora Destino'
                      from rendiciones where id = :'rinde'),
-  'la rendición toma el número del memo y lo recibido, aunque se mande otra cosa');
+  'la rendición toma del memo el número, lo recibido y a nombre de quién, aunque se mande otra cosa');
 select pruebas.ok((select count(*) = 0 from memos_para_rendir()), 'y ya no aparece para rendir otra vez');
-select pruebas.falla(format($$update rendiciones set memo_entrega_id = null where id = %L$$, :'rinde'),
-  'el memo de entrega de una rendición no se cambia');
+select pruebas.falla(format($$update rendiciones set linea_entrega_id = null where id = %L$$, :'rinde'),
+  'lo que la rendición toma del memo no se cambia');
+select pruebas.falla(format($$update rendiciones set monto = 1 where id = %L$$, :'rinde'),
+  'ni lo recibido');
 
 reset role; select pruebas.como('emi@inroprin.com');
+select pruebas.ok((select count(*) = 1 and bool_and(a_nombre_de_otro) and min(beneficiario) = 'Zenón Campo' from memos_para_rendir()),
+  'quien emitió la entrega ve para rendir solo a quien no tiene cuenta (Zenón), no a Dora');
+select pruebas.falla(format($$insert into rendiciones (tipo, numero_memo, empresa_id, responsable_id, monto, linea_entrega_id)
+  values ('memo', 'x', %s, %L, 1, %L)$$, :inroprin, :'emi', :'linea_dora'),
+  'la jefatura no rinde por quien tiene cuenta');
+insert into rendiciones (tipo, numero_memo, empresa_id, responsable_id, monto, linea_entrega_id)
+values ('memo', 'x', :inroprin, :'emi', 1, :'linea_zenon') returning id as rinde_zenon \gset
+select pruebas.ok((select monto = 450 and beneficiario = 'Zenón Campo' and beneficiario_doc = '70000001' and responsable_id = :'emi'
+                     from rendiciones where id = :'rinde_zenon'),
+  'y sí rinde a nombre de quien no tiene cuenta: dos rendiciones del mismo memo conviven');
 select pruebas.falla(format($$insert into rendiciones (tipo, numero_memo, empresa_id, responsable_id, monto, memo_entrega_id)
   values ('memo', 'x', %s, %L, 1, %L)$$, :inroprin, :'emi', :'entrega'),
-  'nadie rinde un memo que no le entregó dinero');
+  'una rendición de la plataforma dice a nombre de quién (la línea)');
+
+reset role; select pruebas.como('dario@inroprin.com');
+select pruebas.falla(format($$insert into rendiciones (tipo, numero_memo, empresa_id, responsable_id, monto, linea_entrega_id)
+  values ('memo', 'x', %s, %L, 1, %L)$$, :inroprin, (select id from personas where correo = 'dario@inroprin.com'), :'linea_zenon'),
+  'nadie ajeno al memo rinde una entrega');
+
+reset role; select pruebas.como_sistema();
+select registrar_estado_pago(:'entrega', 'observado_analisis', 'Revisar la sede');
+reset role; select pruebas.como('emi@inroprin.com');
+select pruebas.falla(format($$update lineas_pago set monto = 1 where id = %L$$, :'linea_zenon'),
+  'si Análisis devuelve el memo, la línea que ya se rinde no cambia de monto');
+select pruebas.falla(format($$delete from lineas_pago where id = %L$$, :'linea_zenon'), 'ni se quita');
+update lineas_pago set sede = 'Arequipa' where id = :'linea_zenon';
+select pruebas.ok((select sede = 'Arequipa' from lineas_pago where id = :'linea_zenon'), 'pero lo demás sí se corrige');
+reset role;
+select pruebas.ok((select count(*) = 0 from rendiciones where memo_entrega_id is null and linea_entrega_id is null and beneficiario is not null),
+  'las rendiciones escritas a mano no dicen a nombre de otro');
 
 \echo '\n· Ciclo: Tesorería registra el pago y la rendición se cierra sola'
 
