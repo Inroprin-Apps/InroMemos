@@ -110,6 +110,9 @@ export type Linea = {
   serie: string;
   numero: string;
   fecha_comprobante: string | null;
+  /** Solo en la entrega de viáticos: el periodo del viaje. */
+  viaje_desde: string | null;
+  viaje_hasta: string | null;
   banco: string;
   cuenta: string;
   cci: string;
@@ -557,7 +560,27 @@ export async function enlaceSustento(ruta: string): Promise<string> {
 export const registrarEstadoPago = (id: string, estado: EstadoPago, detalle: string) =>
   transicion("registrar_estado_pago", { mid: id, estado, detalle });
 
-export type MemoParaRendir = { id: string; numero_visible: string; asunto: string; empresa_id: number; monto: number; moneda: string };
+/** El tipo de memo que entrega viáticos antes del viaje; después se rinden con comprobantes. */
+export const ENTREGA_VIATICOS = "RR-EVI";
+
+/**
+ * Una persona de una entrega de viáticos aprobada que me toca rendir: la mía,
+ * o la de alguien sin cuenta en InroScan si yo emití el memo o soy su jefatura.
+ */
+export type MemoParaRendir = {
+  linea_id: string;
+  id: string;
+  numero_visible: string;
+  asunto: string;
+  empresa_id: number;
+  monto: number;
+  moneda: string;
+  beneficiario: string;
+  beneficiario_doc: string;
+  a_nombre_de_otro: boolean;
+  viaje_desde: string | null;
+  viaje_hasta: string | null;
+};
 
 export async function memosParaRendir(): Promise<MemoParaRendir[]> {
   return exigir(await supabase().rpc("memos_para_rendir")) as MemoParaRendir[];

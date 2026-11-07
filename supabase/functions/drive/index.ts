@@ -182,7 +182,9 @@ async function publicar(rendicionId: string, uid: string, esAdmin: boolean) {
     fetch,
     await tokenDeAcceso(fetch, { refresh_token: c.refresh_token, client_id: CLIENT_ID, client_secret: secreto() }),
   );
-  const responsable = r.responsable?.nombre || r.responsable?.correo || "";
+  // A nombre de quién: la persona que viajó, aunque rinda la jefatura por ella
+  // (cada persona de una misma entrega tiene así su carpeta y su hoja).
+  const responsable = r.beneficiario || r.responsable?.nombre || r.responsable?.correo || "";
 
   // 1. La carpeta de la rendición (una vez), compartida con quien rinde.
   let carpeta: string = r.drive_carpeta_id;

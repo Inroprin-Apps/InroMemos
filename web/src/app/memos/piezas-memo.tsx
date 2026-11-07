@@ -3,8 +3,8 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { ruta } from "@/lib/base";
-import { enmascarar, proximoCiclo, textoCorte, textoDia } from "@/lib/memo-reglas";
-import { ESTADOS_MEMO, ESTADOS_PAGO, dinero, type EstadoMemo, type EstadoPago, type Linea, type Memo } from "@/lib/memos";
+import { enmascarar, periodoViaje, proximoCiclo, textoCorte, textoDia } from "@/lib/memo-reglas";
+import { ENTREGA_VIATICOS, ESTADOS_MEMO, ESTADOS_PAGO, dinero, type EstadoMemo, type EstadoPago, type Linea, type Memo } from "@/lib/memos";
 import { IconoReloj } from "../iconos";
 
 /** Chip de estado: la palabra y el color dicen lo mismo. */
@@ -112,6 +112,8 @@ export function Papel({
   firmante?: string;
 }) {
   const reservado = memo.confidencialidad !== "normal";
+  // La entrega de viáticos no tiene comprobantes todavía: muestra el periodo del viaje.
+  const entrega = memo.tipo_codigo === ENTREGA_VIATICOS;
   const total = lineas.reduce((s, l) => s + (Number(l.monto) || 0), 0);
   const numero = memo.numero_visible ?? "se asigna al enviar";
   return (
@@ -149,7 +151,7 @@ export function Papel({
               <thead>
                 <tr className="border-b border-control text-left text-[10.5px] uppercase tracking-wide text-ink-3">
                   <th className="py-1.5 pr-2 font-semibold">Beneficiario</th>
-                  <th className="py-1.5 pr-2 font-semibold">Comprobante</th>
+                  <th className="py-1.5 pr-2 font-semibold">{entrega ? "Periodo" : "Comprobante"}</th>
                   <th className="py-1.5 pr-2 font-semibold">Banco · cuenta</th>
                   <th className="py-1.5 text-right font-semibold">Monto</th>
                 </tr>
@@ -161,7 +163,9 @@ export function Papel({
                       {l.beneficiario || "—"}
                       <span className="block text-[11px] text-ink-3">{l.beneficiario_doc}</span>
                     </td>
-                    <td className="whitespace-nowrap py-1.5 pr-2 tabular-nums">{l.numero ? `${l.serie}-${l.numero}` : "—"}</td>
+                    <td className="whitespace-nowrap py-1.5 pr-2 tabular-nums">
+                      {entrega ? periodoViaje(l.viaje_desde, l.viaje_hasta) || "—" : l.numero ? `${l.serie}-${l.numero}` : "—"}
+                    </td>
                     <td className="whitespace-nowrap py-1.5 pr-2 tabular-nums">{l.banco ? `${l.banco} ${cuentaVisible(l.cuenta || l.cci)}` : "—"}</td>
                     <td className="whitespace-nowrap py-1.5 text-right tabular-nums">{dinero(l.monto, l.moneda)}</td>
                   </tr>

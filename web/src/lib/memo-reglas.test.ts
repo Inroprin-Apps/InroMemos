@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  periodoViaje,
   bancoCanonico,
   comprobante,
   enmascarar,
@@ -97,5 +98,18 @@ describe("corte lunes y miércoles 16:00, pago martes y jueves", () => {
   });
   it("el miércoles en la noche pasa al lunes siguiente", () => {
     expect(textoCorte(proximoCiclo(lima("2026-11-11T20:00:00")).corte)).toBe("lunes 16 nov, 4:00 pm");
+  });
+});
+
+describe("periodo del viaje", () => {
+  it("con el año una sola vez si es el mismo", () => {
+    expect(periodoViaje("2026-11-03", "2026-11-08")).toBe("03/11 al 08/11/2026");
+  });
+  it("con los dos años si cruza el año", () => {
+    expect(periodoViaje("2026-12-28", "2027-01-03")).toBe("28/12/2026 al 03/01/2027");
+  });
+  it("con una sola fecha o ninguna", () => {
+    expect(periodoViaje("2026-11-03", null)).toBe("desde el 03/11/2026");
+    expect(periodoViaje(null, null)).toBe("");
   });
 });

@@ -6,7 +6,7 @@ import {
   assertStringIncludes,
   assertThrows,
 } from "jsr:@std/assert@1.0.14";
-import { htmlMemo, nombreCarpeta, rutaMemo } from "./memo.ts";
+import { htmlMemo, nombreCarpeta, periodoViaje, rutaMemo } from "./memo.ts";
 import { armarCorreo, mensajeCrudo } from "./correo.ts";
 import { comparar, huella, identificador, leerBase, mascara } from "./cuentas.ts";
 
@@ -52,6 +52,24 @@ Deno.test("el papel del memo: encabezado, tabla con cuenta enmascarada, sello y 
   assertStringIncludes(h, "código <b>7F3A-91C2</b>");
   assertStringIncludes(h, "&lt;b&gt;a fin&lt;/b&gt;");
   assertStringIncludes(h, "Lima, 6 de noviembre de 2026");
+});
+
+Deno.test("la entrega de viáticos muestra el periodo del viaje en vez del comprobante", () => {
+  const h = htmlMemo({ ...memo, tipo_codigo: "RR-EVI" }, [{
+    ...linea,
+    viaje_desde: "2026-11-03",
+    viaje_hasta: "2026-11-08",
+  }], {
+    empresa: "INROPRIN",
+    unidad: "Gestión de Proyectos",
+    aprobador: null,
+    logo: null,
+  });
+  assertStringIncludes(h, ">PERIODO</th>");
+  assertStringIncludes(h, "03/11 al 08/11/2026");
+  assert(!h.includes(">COMPROBANTE</th>"));
+  assertEquals(periodoViaje("2026-12-28", "2027-01-03"), "28/12/2026 al 03/01/2027");
+  assertEquals(periodoViaje(null, null), "");
 });
 
 Deno.test("un memo reservado no lista personas: solo el total", () => {

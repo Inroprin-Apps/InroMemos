@@ -75,6 +75,9 @@ export function tituloRendicion(r: {
   numero_memo: string | null;
   correlativo: number | null;
   caja?: { numero: string } | null;
+  beneficiario?: string | null;
 }): string {
-  return r.tipo === "memo" ? `Memo ${r.numero_memo}` : `Caja ${r.caja?.numero ?? "?"} · Reposición ${r.correlativo}`;
+  if (r.tipo !== "memo") return `Caja ${r.caja?.numero ?? "?"} · Reposición ${r.correlativo}`;
+  // Varias personas de una misma entrega: cada rendición dice de quién es.
+  return r.beneficiario ? `Memo ${r.numero_memo} · ${r.beneficiario}` : `Memo ${r.numero_memo}`;
 }

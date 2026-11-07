@@ -243,7 +243,7 @@ function HojaRendicion({ id, persona }: { id: string; persona: Persona }) {
   const excel = () =>
     descargarExcel(
       tituloRendicion({ ...r, caja }).replace(" · ", " - "),
-      filasDeHoja({ rendicion: r, caja, administrador: responsable, comprobantes, catalogos }),
+      filasDeHoja({ rendicion: r, caja, administrador: r.beneficiario || responsable, comprobantes, catalogos }),
     );
 
   return (

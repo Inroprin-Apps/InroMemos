@@ -44,7 +44,12 @@ export type Rendicion = {
   numero_memo: string | null;
   empresa_id: number;
   fecha_solicitud: string;
+  /** Quien rinde: la persona que recibió el dinero o, si no tiene cuenta, la jefatura que emitió la entrega. */
   responsable_id: string;
+  /** La persona del memo de entrega de la plataforma; con `beneficiario`, a nombre de quién se rinde. */
+  linea_entrega_id?: string | null;
+  beneficiario?: string | null;
+  beneficiario_doc?: string | null;
   monto: number | string;
   estado: EstadoRendicion;
   version: number;

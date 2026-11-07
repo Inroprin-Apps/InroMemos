@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { bancoCanonico, BANCOS, comprobante, revisarCci, rucValido, soloDigitos, tipoDocumento } from "@/lib/memo-reglas";
 import {
+  ENTREGA_VIATICOS,
   FORMAS_PAGO,
   agregarLinea,
   anularMemo,
@@ -189,6 +190,9 @@ function Memo_({
 // ---------------------------------------------------------------------------
 
 function plantilla(memo: Memo): string {
+  if (memo.tipo_codigo === ENTREGA_VIATICOS) {
+    return `Me dirijo a usted a fin de solicitar la asignación de viáticos para ${memo.asunto ? memo.asunto.charAt(0).toLowerCase() + memo.asunto.slice(1) : "…"}, según el detalle de personas, fechas y montos que se indica. Los gastos se rendirán con sus comprobantes al término del viaje.\n\nFavor de proceder con el depósito de los montos indicados.`;
+  }
   const pago = memo.requiere_pago
     ? "\n\nSu despacho servirá para disponer el pago correspondiente."
     : "";
@@ -382,9 +386,24 @@ function LineasEditables({
             : `Una línea por persona · se agrupa desde ${tipo?.agrupa_desde ?? 15}`
       }
     >
+      {memo.tipo_codigo === ENTREGA_VIATICOS && (
+        <p className="mb-3 rounded-row bg-primary-soft px-3 py-2 text-[13px] text-primary-strong">
+          Una línea por persona que viaja, con las fechas del viaje. Los comprobantes no van acá: después del viaje se escanean en{" "}
+          <b>Mis rendiciones</b>. Si la persona no tiene cuenta en InroScan, rinde quien emite este memo.
+        </p>
+      )}
       <div className="space-y-3">
         {lineas.map((l, i) => (
-          <LineaEditable key={l.id} n={i + 1} linea={l} contexto={contexto} modo={tipo?.modo_lineas ?? "detalle"} onCambiar={onCambiar} onQuitar={quitar} />
+          <LineaEditable
+            key={l.id}
+            n={i + 1}
+            linea={l}
+            contexto={contexto}
+            modo={tipo?.modo_lineas ?? "detalle"}
+            entrega={memo.tipo_codigo === ENTREGA_VIATICOS}
+            onCambiar={onCambiar}
+            onQuitar={quitar}
+          />
         ))}
       </div>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2.5">
@@ -423,6 +442,7 @@ function LineaEditable({
   linea,
   contexto,
   modo,
+  entrega,
   onCambiar,
   onQuitar,
 }: {
@@ -430,6 +450,8 @@ function LineaEditable({
   linea: Linea;
   contexto: Contexto;
   modo: string;
+  /** Entrega de viáticos: en vez del comprobante, las fechas del viaje. */
+  entrega: boolean;
   onCambiar: (l: Linea, c: CambiosLinea) => void;
   onQuitar: (l: Linea) => void;
 }) {
@@ -658,8 +680,43 @@ function LineaEditable({
         )}
       </div>
 
+      {entrega && (
+        <>
+          <p className="mb-1.5 mt-3.5 text-[11px] font-bold uppercase tracking-[0.07em] text-ink-3">Fechas del viaje</p>
+          <div className="grid gap-2.5 sm:grid-cols-3">
+            <label className="block">
+              <span className={etiqueta}>Desde</span>
+              <input
+                className={campo}
+                type="date"
+                value={l.viaje_desde ?? ""}
+                onChange={(e) => {
+                  setL({ ...l, viaje_desde: e.target.value || null });
+                  guardar({ viaje_desde: e.target.value || null });
+                }}
+              />
+            </label>
+            <label className="block">
+              <span className={etiqueta}>Hasta</span>
+              <input
+                className={campo}
+                type="date"
+                min={l.viaje_desde ?? undefined}
+                value={l.viaje_hasta ?? ""}
+                onChange={(e) => {
+                  setL({ ...l, viaje_hasta: e.target.value || null });
+                  guardar({ viaje_hasta: e.target.value || null });
+                }}
+              />
+            </label>
+          </div>
+        </>
+      )}
+
       {modo !== "agrupado_cc" && (
         <>
+          {!entrega && (
+            <>
           <p className="mb-1.5 mt-3.5 text-[11px] font-bold uppercase tracking-[0.07em] text-ink-3">
             Comprobante {modo === "por_documento" ? "" : "(si lo hay)"}
           </p>
@@ -712,6 +769,8 @@ function LineaEditable({
             </label>
           </div>
           {comp && !comprobante(comp) && <p className="mt-1 text-[12px] text-danger-strong">Escríbelo como serie-número: F001-599.</p>}
+            </>
+          )}
 
           <p className="mb-1.5 mt-3.5 text-[11px] font-bold uppercase tracking-[0.07em] text-ink-3">Cuenta bancaria para verificación</p>
           <div className="grid gap-2.5 sm:grid-cols-3">

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useCatalogos } from "@/lib/catalogos";
 import { aNumero, soles } from "@/lib/cuentas";
 import { crearMemo, crearReposicion, leerMisCajas } from "@/lib/datos";
+import { periodoViaje } from "@/lib/memo-reglas";
 import { guardarMiDni, memosParaRendir, miDni, type MemoParaRendir } from "@/lib/memos";
 import { EN_CURSO, recargarRendiciones, useRendiciones } from "@/lib/rendiciones";
 import type { Persona } from "@/lib/sesion";
@@ -132,7 +133,8 @@ function FormularioMemo({
   // Con una sola empresa activa no hay nada que elegir.
   const empresa = empresaElegida ?? (empresas.length === 1 ? empresas[0].id : null);
 
-  // Los memos de viáticos de la plataforma que me entregaron dinero y no rendí.
+  // Las entregas de viáticos de la plataforma que me toca rendir: las mías y
+  // las de mi gente sin cuenta en InroScan (si emití el memo o soy su jefatura).
   const [dni, setDni] = useState<string | null | undefined>(undefined);
   const [nuevoDni, setNuevoDni] = useState("");
   const [paraRendir, setParaRendir] = useState<MemoParaRendir[]>([]);
@@ -152,7 +154,7 @@ function FormularioMemo({
           fecha_solicitud: fecha,
           empresa_id: m.empresa_id,
           responsable_id: persona.id,
-          memo_entrega_id: m.id,
+          linea_entrega_id: m.linea_id,
         }),
       );
     } catch (err) {
@@ -190,18 +192,25 @@ function FormularioMemo({
       <p className="text-sm font-medium text-ink-2">Memo de viáticos</p>
       {paraRendir.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[13px] text-ink-2">Tus memos de viáticos aprobados, listos para rendir:</p>
+          <p className="text-[13px] text-ink-2">Entregas de viáticos aprobadas, listas para rendir:</p>
           {paraRendir.map((m) => (
             <button
-              key={m.id}
+              key={m.linea_id}
               type="button"
               disabled={guardando}
               onClick={() => rendirMemo(m)}
               className="flex w-full items-center justify-between gap-3 rounded-control border border-primary-line bg-primary-soft px-3 py-2.5 text-left hover:bg-surface-2"
             >
               <span className="min-w-0">
-                <b className="block text-[13.5px] font-semibold text-primary-strong">Rendir el memo {m.numero_visible}</b>
-                <span className="block truncate text-[12px] text-ink-2">{m.asunto}</span>
+                <b className="block text-[13.5px] font-semibold text-primary-strong">
+                  Rendir el memo {m.numero_visible}
+                  {m.a_nombre_de_otro ? ` a nombre de ${m.beneficiario || m.beneficiario_doc}` : ""}
+                </b>
+                <span className="block truncate text-[12px] text-ink-2">
+                  {[periodoViaje(m.viaje_desde, m.viaje_hasta), m.a_nombre_de_otro ? "no tiene cuenta en InroScan: rindes tú con sus comprobantes" : m.asunto]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
               </span>
               <span className="whitespace-nowrap text-[13px] font-semibold tabular-nums text-ink">{soles(Number(m.monto))}</span>
             </button>
@@ -212,7 +221,7 @@ function FormularioMemo({
       {dni === null && (
         <div className="flex flex-wrap items-end gap-2 rounded-control bg-surface-2 px-3 py-2.5">
           <label className="min-w-40 flex-1 text-[12.5px] text-ink-2">
-            Tu DNI: con él aparecen aquí tus memos de viáticos de la plataforma
+            Tu DNI: con él aparecen aquí tus entregas de viáticos de la plataforma
             <input className={`mt-1 ${campo}`} inputMode="numeric" maxLength={8} value={nuevoDni} onChange={(e) => setNuevoDni(e.target.value.replace(/\D/g, ""))} />
           </label>
           <button

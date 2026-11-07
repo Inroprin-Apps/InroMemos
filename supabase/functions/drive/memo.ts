@@ -8,6 +8,7 @@
 
 export type MemoPapel = {
   numero_visible: string;
+  tipo_codigo?: string;
   asunto: string;
   cuerpo: string;
   emisor_nombre: string;
@@ -33,7 +34,22 @@ export type LineaPapel = {
   cci: string;
   monto: number | string;
   moneda: string;
+  viaje_desde?: string | null;
+  viaje_hasta?: string | null;
 };
+
+/** La entrega de viáticos (antes del viaje): en vez del comprobante, el periodo. */
+export const ENTREGA_VIATICOS = "RR-EVI";
+
+/** «03/11 al 08/11/2026»: el mismo texto que la vista previa de la app. */
+export function periodoViaje(desde: string | null | undefined, hasta: string | null | undefined): string {
+  const f = (iso: string) => iso.split("-").reverse().join("/");
+  if (!desde) return hasta ? `hasta el ${f(hasta)}` : "";
+  if (!hasta) return `desde el ${f(desde)}`;
+  return desde.slice(0, 4) === hasta.slice(0, 4)
+    ? `${f(desde).slice(0, 5)} al ${f(hasta)}`
+    : `${f(desde)} al ${f(hasta)}`;
+}
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -68,6 +84,7 @@ export function htmlMemo(
   o: { empresa: string; unidad: string; aprobador: string | null; logo: string | null },
 ): string {
   const reservado = m.confidencialidad !== "normal";
+  const entrega = m.tipo_codigo === ENTREGA_VIATICOS;
   const total = lineas.reduce((s, l) => s + (Number(l.monto) || 0), 0);
   // Google Docs dibuja un borde negro en cada celda que no diga lo contrario:
   // cada lado se declara a mano.
@@ -87,12 +104,20 @@ export function htmlMemo(
       lineas.length === 1 ? "" : "s"
     }. El detalle va en un anexo de acceso restringido.</p>`
     : `<table style="border-collapse:collapse;width:100%;margin-top:8px">
-<tr><th style="${cab}">BENEFICIARIO</th><th style="${cab}">COMPROBANTE</th><th style="${cab}">BANCO · CUENTA</th><th style="${cab};text-align:right">MONTO</th></tr>
+<tr><th style="${cab}">BENEFICIARIO</th><th style="${cab}">${
+      entrega ? "PERIODO" : "COMPROBANTE"
+    }</th><th style="${cab}">BANCO · CUENTA</th><th style="${cab};text-align:right">MONTO</th></tr>
 ${
       lineas.map((l) =>
         `<tr><td style="${celda}">${esc(l.beneficiario)}<br><span style="color:#8a8a86;font-size:8.5pt">${
           esc(l.beneficiario_doc)
-        }</span></td><td style="${celda}">${l.numero ? esc(`${l.serie}-${l.numero}`) : "—"}</td><td style="${celda}">${
+        }</span></td><td style="${celda}">${
+          entrega
+            ? esc(periodoViaje(l.viaje_desde, l.viaje_hasta) || "—")
+            : l.numero
+            ? esc(`${l.serie}-${l.numero}`)
+            : "—"
+        }</td><td style="${celda}">${
           l.banco ? esc(`${l.banco} ${l.cuenta || l.cci}`) : "—"
         }</td><td style="${celda};text-align:right">${esc(dinero(l.monto, l.moneda))}</td></tr>`
       ).join("\n")
