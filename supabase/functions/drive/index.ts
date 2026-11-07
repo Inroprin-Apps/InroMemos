@@ -345,7 +345,7 @@ async function leerCatalogos(): Promise<Catalogos> {
 
 /** La app publicada, para los enlaces de los correos. */
 const APP = Deno.env.get("APP_URL") || "https://inroprin-apps.github.io/InroScan/web";
-const LOGO = `${APP}/icono-192.png`;
+const LOGO = `${APP}/membrete-inroprin.png`;
 
 async function googleConectado() {
   const c = await conexion();
