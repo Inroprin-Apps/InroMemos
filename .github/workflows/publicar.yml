@@ -1,6 +1,6 @@
 name: Publicar
 
-# Publica InroScan en GitHub Pages bajo /InroScan/web/. La raíz solo
+# Publica INROMEMOS en GitHub Pages bajo /InroMemos/web/. La raíz solo
 # redirige ahí: la app anterior se retiró el 26-oct-2026.
 # Requiere que en Settings › Pages la fuente sea «GitHub Actions», y que el
 # entorno github-pages permita desplegar desde estas ramas.
