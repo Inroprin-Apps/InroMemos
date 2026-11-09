@@ -3,14 +3,14 @@
   "short_name": "INROMEMOS",
   "description": "Memorandums, rendiciones de caja chica y viáticos de INROPRIN.",
   "lang": "es",
-  "start_url": "/InroScan/web/",
-  "scope": "/InroScan/web/",
+  "start_url": "/InroMemos/web/",
+  "scope": "/InroMemos/web/",
   "display": "standalone",
   "background_color": "#edf1f4",
   "theme_color": "#007a72",
   "icons": [
-    { "src": "/InroScan/web/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/InroScan/web/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/InroScan/web/inroprin-marca.svg", "sizes": "any", "type": "image/svg+xml" }
+    { "src": "/InroMemos/web/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/InroMemos/web/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/InroMemos/web/inroprin-marca.svg", "sizes": "any", "type": "image/svg+xml" }
   ]
 }

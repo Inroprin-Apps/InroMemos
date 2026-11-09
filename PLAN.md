@@ -1,8 +1,9 @@
 # Plan: INROMEMOS como la app de INROPRIN para memos y rendiciones
 
-> **Nombre:** desde el 9-nov-2026 la app se llama **INROMEMOS** (antes InroScan). El repositorio
-> `Inroprin-Apps/InroScan` y la dirección `…/InroScan/web/` siguen igual hasta la fase 2 del cambio
-> de nombre (§5); por dentro, tablas, funciones y claves del navegador conservan `inroscan`.
+> **Nombre:** desde el 9-nov-2026 la app se llama **INROMEMOS** (antes InroScan): repositorio
+> `Inroprin-Apps/InroMemos`, en <https://inroprin-apps.github.io/InroMemos/web/>. La dirección vieja
+> `…/InroScan/web/` dejó de existir (GitHub no la redirige). Por dentro, tablas, funciones y claves del
+> navegador conservan `inroscan`; el proyecto de Google Cloud sigue siendo `inroscan-contabilidad`.
 >
 > Decisiones del 7-nov-2026: cómo la **Plataforma de Memorandums** (diseñada en
 > Apps Script por Finanzas, traspaso del 3-nov-2026) entra en INROMEMOS, cómo se

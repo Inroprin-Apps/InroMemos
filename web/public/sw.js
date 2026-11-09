@@ -1,8 +1,8 @@
 // La cáscara de INROMEMOS para abrirla sin señal. Solo guarda la app (HTML,
 // JS, CSS, íconos), nunca datos: esos los guarda la propia app y las fotos
 // esperan en su cola (src/lib/cola.ts).
-const CACHE = "inroscan-v1";
-const BASE = "/InroScan/web/";
+const CACHE = "inromemos-v1";
+const BASE = "/InroMemos/web/";
 const PAGINAS = [BASE, `${BASE}rendicion/`, `${BASE}rendicion/revisar/`];
 
 // Cada página y los scripts y estilos que nombra. Sin estos, la página abre
@@ -16,7 +16,7 @@ async function guardarTodo() {
     if (!r.ok) continue;
     await c.put(pagina, r.clone());
     const html = await r.text();
-    for (const m of html.matchAll(/["'](\/InroScan\/web\/(?:_next\/static\/[^"'\\]+|[\w.-]+\.(?:svg|png|webmanifest)))["']/g)) archivos.add(m[1]);
+    for (const m of html.matchAll(/["'](\/InroMemos\/web\/(?:_next\/static\/[^"'\\]+|[\w.-]+\.(?:svg|png|webmanifest)))["']/g)) archivos.add(m[1]);
   }
   // Uno que falle no impide guardar los demás.
   await Promise.all([...archivos].map((u) => c.add(u).catch(() => {})));
