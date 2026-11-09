@@ -1,4 +1,4 @@
-// La copia local de lo que InroScan necesita de INROCONTA: padrón de RUC,
+// La copia local de lo que INROMEMOS necesita de INROCONTA: padrón de RUC,
 // lista SSCO y registro de compras (SIRE) con sus OC y si ya está en CONCAR.
 //
 // La llama administración (botón «Traer ahora» en Áreas y permisos de memos)
@@ -7,7 +7,7 @@
 //
 // Secretos (Supabase → Edge Functions → Secrets):
 //   INROCONTA_URL    la dirección de la app de INROCONTA (Vercel)
-//   INROCONTA_TOKEN  el token de la app «inroscan» (pnpm apps:token inroscan
+//   INROCONTA_TOKEN  el token de la app «inromemos» (pnpm apps:token inromemos
 //                    en INROCONTA; su SHA-256 va en APPS_DATOS_TOKENS de Vercel)
 
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";

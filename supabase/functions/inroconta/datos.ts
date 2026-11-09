@@ -133,10 +133,10 @@ export async function leerConjunto<T>(
   let pagina: number | null = 0;
   for (let vuelta = 0; pagina !== null; vuelta++) {
     if (vuelta >= MAX_PAGINAS) throw new Error(`INROCONTA devolvió más de ${MAX_PAGINAS} páginas de ${conjunto}.`);
-    const url = `${base.replace(/\/+$/, "")}/api/apps/inroscan/datos/${conjunto}?pagina=${pagina}`;
+    const url = `${base.replace(/\/+$/, "")}/api/apps/inromemos/datos/${conjunto}?pagina=${pagina}`;
     const r = await f(url, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } });
     if (r.status === 401 || r.status === 403) {
-      throw new Error("INROCONTA rechazó el token de InroScan: revisa INROCONTA_TOKEN y APPS_DATOS_TOKENS.");
+      throw new Error("INROCONTA rechazó el token de INROMEMOS: revisa INROCONTA_TOKEN y APPS_DATOS_TOKENS.");
     }
     if (!r.ok) throw new Error(`INROCONTA respondió ${r.status} al pedir ${conjunto} (página ${pagina}).`);
     const p = (await r.json()) as Pagina<T>;

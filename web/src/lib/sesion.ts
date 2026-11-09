@@ -57,7 +57,7 @@ export function useSesion(): Sesion {
       // aviso se fija antes, porque el cierre dispara SIGNED_OUT y ese vuelve
       // a pintar la pantalla de ingreso con el aviso vigente.
       if (error || !data) {
-        aviso = "Tu cuenta no está habilitada en InroScan. Pídeselo a administración.";
+        aviso = "Tu cuenta no está habilitada en INROMEMOS. Pídeselo a administración.";
         await cliente.auth.signOut();
         return;
       }

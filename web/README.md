@@ -1,4 +1,4 @@
-# InroScan · app web
+# INROMEMOS · app web
 
 Next.js publicado como sitio estático en GitHub Pages, bajo `/InroScan/web/`.
 Supabase hace de servidor: login con Google, base de datos con permisos por

@@ -13,7 +13,7 @@ export function mensajeDeIngreso(params: URLSearchParams): string | null {
   if (!descripcion && !error) return null;
 
   if (/database error saving new user|inroprin\.com/i.test(descripcion)) {
-    return "InroScan es solo para cuentas de la empresa. Entra con tu correo @inroprin.com.";
+    return "INROMEMOS es solo para cuentas de la empresa. Entra con tu correo @inroprin.com.";
   }
   if (error === "access_denied") {
     return "Se canceló el ingreso con Google. Puedes intentarlo de nuevo.";

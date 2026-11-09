@@ -1,7 +1,7 @@
 {
-  "name": "InroScan · Rendiciones",
-  "short_name": "InroScan",
-  "description": "Rendiciones de caja chica y memos de viáticos de INROPRIN.",
+  "name": "INROMEMOS · Memos y rendiciones",
+  "short_name": "INROMEMOS",
+  "description": "Memorandums, rendiciones de caja chica y viáticos de INROPRIN.",
   "lang": "es",
   "start_url": "/InroScan/web/",
   "scope": "/InroScan/web/",

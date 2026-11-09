@@ -1,4 +1,4 @@
-// La cáscara de InroScan para abrirla sin señal. Solo guarda la app (HTML,
+// La cáscara de INROMEMOS para abrirla sin señal. Solo guarda la app (HTML,
 // JS, CSS, íconos), nunca datos: esos los guarda la propia app y las fotos
 // esperan en su cola (src/lib/cola.ts).
 const CACHE = "inroscan-v1";

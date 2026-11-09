@@ -236,7 +236,7 @@ function NuevaCaja({
         </label>
       </div>
       {fondo && aNumero(fondo) > 0 && <p className="text-sm text-ink-3">Fondo de {soles(aNumero(fondo))}.</p>}
-      <p className="text-[13px] text-ink-3">Si el administrador no aparece, primero tiene que entrar una vez a InroScan con su cuenta @inroprin.com.</p>
+      <p className="text-[13px] text-ink-3">Si el administrador no aparece, primero tiene que entrar una vez a INROMEMOS con su cuenta @inroprin.com.</p>
       {error && <Aviso>{error}</Aviso>}
       <div className="flex gap-2">
         <button type="submit" className={botonPrincipal} disabled={guardando}>

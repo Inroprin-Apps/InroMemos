@@ -109,7 +109,7 @@ function Revisar({ id, inicial, persona }: { id: string; inicial: string | null;
     if (!window.confirm(texto)) return;
     h.ejecutar(async () => {
       h.conRendicion(await decidirRendicion(r.id, "aprobada", ""));
-      // Aprobada: Drive verifica cada imagen copiada y la borra de InroScan.
+      // Aprobada: Drive verifica cada imagen copiada y la borra de INROMEMOS.
       publicarEnDrive(r.id);
     });
   };

@@ -1,9 +1,13 @@
-# Plan: InroScan como la app de INROPRIN para memos y rendiciones
+# Plan: INROMEMOS como la app de INROPRIN para memos y rendiciones
 
+> **Nombre:** desde el 9-nov-2026 la app se llama **INROMEMOS** (antes InroScan). El repositorio
+> `Inroprin-Apps/InroScan` y la dirección `…/InroScan/web/` siguen igual hasta la fase 2 del cambio
+> de nombre (§5); por dentro, tablas, funciones y claves del navegador conservan `inroscan`.
+>
 > Decisiones del 7-nov-2026: cómo la **Plataforma de Memorandums** (diseñada en
-> Apps Script por Finanzas, traspaso del 3-nov-2026) entra en InroScan, cómo se
+> Apps Script por Finanzas, traspaso del 3-nov-2026) entra en INROMEMOS, cómo se
 > conecta con **INROCONTA** (Contabilidad) y qué sigue. Lo que ya estaba en
-> InroScan sigue en [CONTEXTO.md](CONTEXTO.md).
+> INROMEMOS sigue en [CONTEXTO.md](CONTEXTO.md).
 
 ---
 
@@ -14,7 +18,7 @@ por un contrato:
 
 | Sistema | Es dueño de | Cómo lo leen los demás |
 |---|---|---|
-| **InroScan** (este repo) | Memos de todas las empresas y áreas; rendiciones de caja chica y viáticos | Su base Supabase, con permisos por fila. A futuro, la cola de pagos hacia InroPay (§5) |
+| **INROMEMOS** (este repo) | Memos de todas las empresas y áreas; rendiciones de caja chica y viáticos | Su base Supabase, con permisos por fila. A futuro, la cola de pagos hacia InroPay (§5) |
 | **INROCONTA** (`Inroprin-Apps/Inroconta`) | Lo que viene de SUNAT: padrón de RUC, lista SSCO, registro de compras (SIRE), XML/PDF, OC, centros de costo, detracciones, CONCAR | `/api/apps/<app>/datos/<padron\|ssco\|sire\|concar>` con un token por app |
 | **InroPay** (Apps Script) | Análisis y Registro → RG → Programación y Pagos | Los 17 campos de `MAPEO_RG` (pendiente, §5) |
 | **Bases de cuentas** (3 Google Sheets) | Cuentas bancarias de proveedores, importaciones y personal | Lectura por encabezado (pendiente, §5) |
@@ -29,10 +33,10 @@ regla de que **el servidor decide; la pantalla solo muestra**.
 
 | Tema | Decisión | Por qué |
 |---|---|---|
-| Vercel | **No hace falta** | InroScan ya tiene su servidor en Supabase (base, permisos por fila, funciones, reloj). Vercel solo serviría para páginas armadas en un servidor, que esta app no necesita: es estática en GitHub Pages y funciona sin señal. Un sistema menos que mantener. |
-| Apps Script → InroScan | La plataforma de memos **se construye en InroScan**, no en Apps Script | El código de Apps Script nunca corrió en Google real y no vino en el traspaso (solo documentos, vistas y la hoja de configuración). Postgres hace mejor lo que Apps Script resolvía con candados y hojas: la numeración (una transacción con candado de fila: dos emisiones a la vez nunca reciben el mismo número), los estados (funciones y triggers), la visibilidad por área (permisos por fila) y el historial. Y se comparte con las rendiciones: mismas personas, empresas, proyectos y conceptos. |
+| Vercel | **No hace falta** | INROMEMOS ya tiene su servidor en Supabase (base, permisos por fila, funciones, reloj). Vercel solo serviría para páginas armadas en un servidor, que esta app no necesita: es estática en GitHub Pages y funciona sin señal. Un sistema menos que mantener. |
+| Apps Script → INROMEMOS | La plataforma de memos **se construye en INROMEMOS**, no en Apps Script | El código de Apps Script nunca corrió en Google real y no vino en el traspaso (solo documentos, vistas y la hoja de configuración). Postgres hace mejor lo que Apps Script resolvía con candados y hojas: la numeración (una transacción con candado de fila: dos emisiones a la vez nunca reciben el mismo número), los estados (funciones y triggers), la visibilidad por área (permisos por fila) y el historial. Y se comparte con las rendiciones: mismas personas, empresas, proyectos y conceptos. |
 | Diseño | **INROCONTA** para toda la app | Es el sistema visual vigente del grupo. Del prototipo aprobado de memos se conserva la estructura (panel, emitir, detalle, papel, bitácora), pintada con los roles de INROCONTA. |
-| INROCONTA | **Copia local** de padrón, SSCO y SIRE en la base de InroScan | Cada revisión de un memo consulta la propia base, al instante, aunque INROCONTA no responda en ese momento. La función `inroconta` la refresca a mano o una vez al día. La base v2 de INROCONTA está en otro proyecto de Supabase y es solo de servidor: la puerta correcta es su API para apps. |
+| INROCONTA | **Copia local** de padrón, SSCO y SIRE en la base de INROMEMOS | Cada revisión de un memo consulta la propia base, al instante, aunque INROCONTA no responda en ese momento. La función `inroconta` la refresca a mano o una vez al día. La base v2 de INROCONTA está en otro proyecto de Supabase y es solo de servidor: la puerta correcta es su API para apps. |
 | Hoja de configuración | Sus catálogos pasan a la base | Empresas (20, con código corto), áreas emisoras, los **53 tipos de memo** y sus sustentos están en la migración `…_memos_catalogos.sql`. Jefes, personas, carpetas y semillas **no** van al repositorio (es público): los carga administración en «Áreas y permisos de memos». |
 
 ### De INROCONTA se tomó, además del diseño
@@ -101,7 +105,7 @@ regla de que **el servidor decide; la pantalla solo muestra**.
 |---|---|---|
 | 1 | Publicar la app (unir a `main`) | ✅ Hecho |
 | 2 | Gmail API y Sheets API activadas; Drive reconectado con permiso de Gmail | ✅ Hecho |
-| 3 | Memo de prueba completo en el área **INROPRIN · Pruebas (InroScan)** (`PRUEBAS`): emitir → aprobar → PDF en Drive → correos → cargo | ✅ Hecho (`001-2026-PRUEBAS`, quedó «Recibido») |
+| 3 | Memo de prueba completo en el área **INROPRIN · Pruebas (INROMEMOS)** (`PRUEBAS`): emitir → aprobar → PDF en Drive → correos → cargo | ✅ Hecho (`001-2026-PRUEBAS`, quedó «Recibido») |
 | 4 | Secreto `CORREO_MODO = real` en Supabase | ✅ Hecho |
 | 5 | **INROCONTA** | ⏸️ **Pendiente: el lunes.** El Vercel de INROCONTA lo administra el practicante de Sistemas; hay que hacerlo con él |
 | 6 | Bases de cuentas (IDs de las 3 hojas) | Pendiente: confirmar los IDs antes de cargarlos |
@@ -121,8 +125,8 @@ Quedó abierto en la prueba:
 3. **Correo real:** hasta que el secreto de Supabase `CORREO_MODO` diga `real`, todo correo va solo a la cuenta conectada, con una franja que dice a quién iba.
 4. **Configurar** en «Áreas y permisos de memos»: jefes y suplentes, quién emite dónde, roles (KPIs, interárea, verificador, Tesorería) y la semilla de cada serie.
 5. **INROCONTA**, en tres partes:
-   - A. En el repositorio de INROCONTA (PowerShell): `pnpm apps:token inroscan`. Imprime el **token** y una línea `inroscan=<sha256>`. No se pegan en chats.
-   - B. En el proyecto de INROCONTA en Vercel › Settings › Environment Variables: a `APPS_DATOS_TOKENS` se le **agrega** `,inroscan=<sha256>` (sin borrar `carga-concar=…`), se guarda y se hace **Redeploy**.
+   - A. En el repositorio de INROCONTA (PowerShell): `pnpm apps:token inromemos`. Imprime el **token** y una línea `inromemos=<sha256>`. No se pegan en chats.
+   - B. En el proyecto de INROCONTA en Vercel › Settings › Environment Variables: a `APPS_DATOS_TOKENS` se le **agrega** `,inromemos=<sha256>` (sin borrar `carga-concar=…`), se guarda y se hace **Redeploy**.
    - C. En Supabase (foto-grama) › Edge Functions › Secrets: `INROCONTA_TOKEN` = el token; `INROCONTA_URL` = la dirección de INROCONTA (`https://….vercel.app`, sin barra al final).
    - Comprobar: «Áreas y permisos de memos» › Datos de INROCONTA › **Traer ahora**; los contadores dejan de estar en 0.
 6. **Bases de cuentas:** cargar en la tabla `bases_cuentas` el ID de cada hoja (Nacional, Importaciones, RRHH) y su pestaña; la cuenta conectada a Drive tiene que poder leerlas.
@@ -135,11 +139,11 @@ Quedó abierto en la prueba:
 | 1 | Membrete por empresa (logos de INROPLAS, GECOR, consorcios) en el PDF | Logos en el repositorio |
 | 2 | Servicio central de correlativos para Fianzas e InroPay Programación | Fase de pruebas con Finanzas |
 | 3 | Planilla: memo por concepto y centro de costo, lote con observación por memo | La planilla nueva de RRHH |
-| 4 | Escribir las cuentas nuevas verificadas en las bases (hoy quedan en InroScan) | Que Finanzas lo apruebe |
+| 4 | Escribir las cuentas nuevas verificadas en las bases (hoy quedan en INROMEMOS) | Que Finanzas lo apruebe |
 | 5 | Unir `proyectos` con los centros de costo de INROCONTA | — |
 
 ### Decisiones que siguen abiertas
 
 - Códigos cortos de empresa y tipos de memo marcados «propuesto».
 - Si se importan los 204 memos históricos del respaldo de foto-grama.
-- Acordar con INROCONTA que memos y viáticos vivan en InroScan (su v2 trae `006_viaticos.sql` del piloto INRO VIÁTICOS, parado desde el 8-oct).
+- Acordar con INROCONTA que memos y viáticos vivan en INROMEMOS (su v2 trae `006_viaticos.sql` del piloto INRO VIÁTICOS, parado desde el 8-oct).

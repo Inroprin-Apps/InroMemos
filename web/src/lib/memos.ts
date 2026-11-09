@@ -565,7 +565,7 @@ export const ENTREGA_VIATICOS = "RR-EVI";
 
 /**
  * Una persona de una entrega de viáticos aprobada que me toca rendir: la mía,
- * o la de alguien sin cuenta en InroScan si yo emití el memo o soy su jefatura.
+ * o la de alguien sin cuenta en INROMEMOS si yo emití el memo o soy su jefatura.
  */
 export type MemoParaRendir = {
   linea_id: string;

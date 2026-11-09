@@ -1,7 +1,7 @@
 // Las tres bases de cuentas bancarias (hojas de Google que no se tocan) leídas
 // por encabezado, y la huella de una cuenta. Puro, para probarlo.
 //
-// La base de InroScan NUNCA guarda un número de cuenta completo: guarda los
+// La base de INROMEMOS NUNCA guarda un número de cuenta completo: guarda los
 // últimos 4 dígitos para mostrar y una huella HMAC-SHA256 (con una clave que
 // solo conoce la función) para comparar. Con la huella se sabe si dos números
 // son el mismo, pero no se puede volver al número.

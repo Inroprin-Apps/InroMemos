@@ -99,7 +99,7 @@ ${monto}
   }" style="display:inline-block;background:#006db1;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:9px;font-weight:bold">${
     esc(t.boton)
   }</a></p>
-<p style="color:#8a8a86;font-size:12px">InroScan · Plataforma de Memorandums de INROPRIN</p>
+<p style="color:#8a8a86;font-size:12px">INROMEMOS · Plataforma de Memorandums de INROPRIN</p>
 </div>`;
   return {
     para: prueba ? [o.cuentaPrueba] : a.para,
@@ -117,7 +117,7 @@ const encabezado = (s: string) =>
 export function mensajeCrudo(c: Correo, de: string, responderA?: string): string {
   const html = btoa(String.fromCharCode(...new TextEncoder().encode(c.html))).replace(/.{1,76}/g, "$&\r\n");
   return [
-    `From: ${encabezado("InroScan")} <${de}>`,
+    `From: ${encabezado("INROMEMOS")} <${de}>`,
     `To: ${c.para.join(", ")}`,
     ...(c.copia.length ? [`Cc: ${c.copia.join(", ")}`] : []),
     ...(responderA ? [`Reply-To: ${responderA}`] : []),
