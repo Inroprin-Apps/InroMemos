@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
 import { ruta } from "@/lib/base";
+import { Marco } from "./marco";
 import { RegistroSW } from "./registro-sw";
 
 // Una sola familia, como INROCONTA: la jerarquía se arma con peso y tamaño.
@@ -9,7 +10,7 @@ const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin"], weight
 
 export const metadata: Metadata = {
   title: "INROMEMOS",
-  description: "Rendiciones de caja chica y memos de viáticos de INROPRIN.",
+  description: "Memorandums, rendiciones de caja chica y viáticos de INROPRIN.",
   icons: { icon: ruta("inroprin-marca.svg"), apple: ruta("icono-192.png") },
   manifest: ruta("manifest.webmanifest"),
   appleWebApp: { capable: true, title: "INROMEMOS", statusBarStyle: "default" },
@@ -21,7 +22,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="es" className={`${manrope.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans">
-        {children}
+        <Marco>{children}</Marco>
         <RegistroSW />
       </body>
     </html>

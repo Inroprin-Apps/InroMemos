@@ -209,5 +209,41 @@ update usuarios_memo set ver_kpis = true where correo = 'emi@inroprin.com';
 reset role; select pruebas.como('emi@inroprin.com');
 select pruebas.ok((select kpis_memos('2020-01-01', '2100-12-31') ? 'a_la_primera_pct'), 'y quien tiene el permiso, también');
 
+\echo '\n· KPIs para jefaturas y valoración de cada acción'
+
+reset role;
+update usuarios_memo set ver_kpis = false where correo = 'emi@inroprin.com';
+reset role; select pruebas.como('emi@inroprin.com');
+select pruebas.falla($$insert into valoraciones (accion, puntaje) values ('emitir', 6)$$, 'la valoración va de 1 a 5');
+insert into valoraciones (accion, puntaje, comentario, memo_id) values ('emitir', 2, '  Tardó en cargar  ', :'v2');
+insert into valoraciones (accion, puntaje, comentario, memo_id) values ('emitir', 4, 'Mejor', :'v2');
+select pruebas.ok((select count(*) = 1 and min(puntaje) = 4 from valoraciones where memo_id = :'v2'),
+  'valorar otra vez la misma acción reemplaza la anterior');
+select pruebas.ok((select unidad_id = :finanzas from valoraciones where memo_id = :'v2'), 'la valoración queda en el área del memo');
+insert into valoraciones (persona_id, accion, puntaje) values (:'dora', 'otro', 5);
+select pruebas.ok((select persona_id = :'emi' from valoraciones where accion = 'otro'),
+  'nadie valora a nombre de otro: queda como de quien la escribió');
+select pruebas.falla($$select kpis_memos('2020-01-01', '2100-12-31')$$, 'quien solo emite no ve los KPIs');
+
+reset role; select pruebas.como('rita@inroprin.com');
+select pruebas.ok((select count(*) = 0 from valoraciones), 'cada quien ve solo sus valoraciones');
+
+reset role; select pruebas.como('jefa@inroprin.com');
+select pruebas.ok((select kpis_memos('2020-01-01', '2100-12-31') ->> 'alcance' = 'Finanzas'), 'la jefa de Finanzas ve los KPIs de su área');
+select pruebas.ok((select (k ->> 'acogida_n')::int = 1 and (k ->> 'acogida')::numeric = 4 and jsonb_array_length(k -> 'comentarios') = 1
+                     from kpis_memos('2020-01-01', '2100-12-31') k),
+  'con la acogida de su área y sus comentarios');
+select pruebas.ok((select (kpis_memos('2020-01-01', '2100-12-31') ->> 'emitidos')::int
+                   = (select count(*) from memos where unidad_id = :finanzas and emitido_en is not null)),
+  'solo cuenta los memos de su área');
+select pruebas.falla($$insert into auditorias (auditor, nivel, resumen) values ('yo', 'ok', 'todo bien')$$,
+  'la auditoría externa no la escribe nadie con sesión');
+
+reset role;
+insert into auditorias (auditor, nivel, resumen, hallazgos) values ('Agente externo', 'observaciones', 'Dos memos sin PDF', '[{"x":1},{"x":2}]');
+select pruebas.como('carla@inroprin.com');
+select pruebas.ok((select k -> 'auditoria' ->> 'nivel' = 'observaciones' and (k -> 'auditoria' ->> 'hallazgos')::int = 2
+                     from kpis_memos('2020-01-01', '2100-12-31') k), 'el último informe de la auditoría externa aparece en los KPIs');
+
 reset role;
 \echo '\nCiclo en orden\n'

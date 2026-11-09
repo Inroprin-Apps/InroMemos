@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { FallaDeBase } from "./errores-de-base";
 import { supabase } from "./supabase";
+import { pedirValoracion, type Accion } from "./valoracion";
 
 /**
  * La Plataforma de Memorandums vista desde la app. Las reglas (quién ve, quién
@@ -342,9 +343,19 @@ export async function quitarLinea(id: string): Promise<void> {
   if (error) throw new FallaDeBase(error);
 }
 
+// Qué acción se valora después de cada cambio de estado (la acogida de los KPIs).
+const VALORA: Record<string, Accion> = {
+  emitir_memo: "emitir",
+  aprobar_memo: "aprobar",
+  observar_memo: "observar",
+  anular_memo: "anular",
+  dar_cargo: "dar_cargo",
+};
+
 async function transicion(fn: string, args: Record<string, unknown>): Promise<Memo> {
   const memo = exigir(await supabase().rpc(fn, args)) as Memo;
   recargarMemos();
+  if (VALORA[fn]) pedirValoracion({ accion: VALORA[fn], memo_id: memo.id });
   return memo;
 }
 
@@ -601,6 +612,8 @@ export async function guardarMiDni(dni: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 export type Kpis = {
+  /** «todas», o las áreas de la jefatura que mira. */
+  alcance: string;
   emitidos: number;
   anulados: number;
   pendientes: number;
@@ -617,6 +630,18 @@ export type Kpis = {
   pagados: number;
   por_area: { area: string; empresa: string; emitidos: number; pendientes: number; observados: number; monto: number }[];
   por_semana: { semana: string; emitidos: number }[];
+  observaciones: number;
+  devueltos_analisis: number;
+  horas_pago_mediana: number | null;
+  correo_minutos_mediana: number | null;
+  correos: number;
+  correos_con_error: number;
+  acogida: number | null;
+  acogida_n: number;
+  acogida_dist: Record<string, number>;
+  acogida_por_accion: { accion: string; n: number; promedio: number }[];
+  comentarios: { accion: string; puntaje: number; comentario: string; en: string }[];
+  auditoria: { en: string; auditor: string; nivel: "ok" | "observaciones" | "critico"; resumen: string; hallazgos: number; periodo_desde: string | null; periodo_hasta: string | null } | null;
 };
 
 export async function leerKpis(desde: string, hasta: string): Promise<Kpis> {

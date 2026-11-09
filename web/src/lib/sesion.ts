@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { BASE_PATH } from "./base";
 import { mensajeDeIngreso, paramsDeRetorno } from "./errores-de-ingreso";
 import { supabase } from "./supabase";
@@ -18,70 +18,86 @@ export type Sesion =
   | { estado: "fuera"; aviso: string | null }
   | { estado: "dentro"; persona: Persona };
 
-/** Quién está dentro, si alguien. Se actualiza solo al entrar o salir. */
+/**
+ * Quién está dentro, si alguien. Se resuelve UNA vez por pestaña y todas las
+ * pantallas la comparten: pasar de una a otra ya no vuelve a preguntar ni
+ * muestra «Abriendo…» (era el corte entre módulos). Se actualiza sola al entrar
+ * o salir.
+ */
 export function useSesion(): Sesion {
-  const [sesion, setSesion] = useState<Sesion>({ estado: "cargando" });
+  return useSyncExternalStore(suscribir, () => actual, () => CARGANDO);
+}
 
-  useEffect(() => {
-    const cliente = supabase();
+const CARGANDO: Sesion = { estado: "cargando" };
+let actual: Sesion = CARGANDO;
+const oyentes = new Set<() => void>();
+let iniciada = false;
 
-    // El aviso del retorno se lee una vez y se saca de la URL: si no, una
-    // recarga lo volvería a mostrar como si hubiera vuelto a fallar.
-    let aviso = mensajeDeIngreso(paramsDeRetorno(window.location.href));
-    if (aviso) window.history.replaceState(null, "", `${BASE_PATH}/`);
+function poner(s: Sesion) {
+  actual = s;
+  oyentes.forEach((f) => f());
+}
 
-    let vigente = true;
-    const mostrar = async (uid: string | null) => {
-      if (!uid) {
-        if (vigente) setSesion({ estado: "fuera", aviso });
+function suscribir(f: () => void) {
+  oyentes.add(f);
+  iniciar();
+  return () => oyentes.delete(f);
+}
+
+function iniciar() {
+  if (iniciada) return;
+  iniciada = true;
+  const cliente = supabase();
+
+  // El aviso del retorno se lee una vez y se saca de la URL: si no, una
+  // recarga lo volvería a mostrar como si hubiera vuelto a fallar.
+  let aviso = mensajeDeIngreso(paramsDeRetorno(window.location.href));
+  if (aviso) window.history.replaceState(null, "", `${BASE_PATH}/`);
+
+  const mostrar = async (uid: string | null) => {
+    if (!uid) {
+      poner({ estado: "fuera", aviso });
+      return;
+    }
+    const { data, error } = await cliente
+      .from("personas")
+      .select("id, correo, nombre, area_id, es_administracion")
+      .eq("id", uid)
+      .single();
+    // Sin señal no se sabe nada nuevo de la cuenta: se sigue con lo último
+    // conocido para poder capturar igual. Cerrar la sesión acá dejaría a la
+    // persona fuera justo cuando no puede volver a entrar.
+    if (error && sinSenal(error)) {
+      const guardada = leerGuardada(uid);
+      if (guardada) {
+        poner({ estado: "dentro", persona: guardada });
         return;
       }
-      const { data, error } = await cliente
-        .from("personas")
-        .select("id, correo, nombre, area_id, es_administracion")
-        .eq("id", uid)
-        .single();
-      if (!vigente) return;
-      // Sin señal no se sabe nada nuevo de la cuenta: se sigue con lo último
-      // conocido para poder capturar igual. Cerrar la sesión acá dejaría a la
-      // persona fuera justo cuando no puede volver a entrar.
-      if (error && sinSenal(error)) {
-        const guardada = leerGuardada(uid);
-        if (guardada) {
-          setSesion({ estado: "dentro", persona: guardada });
-          return;
-        }
-      }
-      // Sin fila de persona (desactivada, o el alta falló) no hay nada que
-      // mostrar: se cierra la sesión en vez de dejar una pantalla vacía. El
-      // aviso se fija antes, porque el cierre dispara SIGNED_OUT y ese vuelve
-      // a pintar la pantalla de ingreso con el aviso vigente.
-      if (error || !data) {
-        aviso = "Tu cuenta no está habilitada en INROMEMOS. Pídeselo a administración.";
-        await cliente.auth.signOut();
-        return;
-      }
-      guardar(data);
-      setSesion({ estado: "dentro", persona: data });
-    };
+    }
+    // Sin fila de persona (desactivada, o el alta falló) no hay nada que
+    // mostrar: se cierra la sesión en vez de dejar una pantalla vacía. El
+    // aviso se fija antes, porque el cierre dispara SIGNED_OUT y ese vuelve
+    // a pintar la pantalla de ingreso con el aviso vigente.
+    if (error || !data) {
+      aviso = "Tu cuenta no está habilitada en INROMEMOS. Pídeselo a administración.";
+      await cliente.auth.signOut();
+      return;
+    }
+    guardar(data);
+    // La misma persona de antes (un token renovado): nada que volver a pintar.
+    if (actual.estado === "dentro" && JSON.stringify(actual.persona) === JSON.stringify(data)) return;
+    poner({ estado: "dentro", persona: data });
+  };
 
-    // INITIAL_SESSION llega cuando el cliente terminó de arrancar, incluido el
-    // canje del código que devuelve Google.
-    const { data: escucha } = cliente.auth.onAuthStateChange((evento, s) => {
-      if (evento === "INITIAL_SESSION" || evento === "SIGNED_IN" || evento === "SIGNED_OUT") {
-        // Fuera del callback: llamar a Supabase desde adentro puede trabar el
-        // candado de la sesión (lo advierte la documentación de supabase-js).
-        setTimeout(() => mostrar(s?.user.id ?? null), 0);
-      }
-    });
-
-    return () => {
-      vigente = false;
-      escucha.subscription.unsubscribe();
-    };
-  }, []);
-
-  return sesion;
+  // INITIAL_SESSION llega cuando el cliente terminó de arrancar, incluido el
+  // canje del código que devuelve Google.
+  cliente.auth.onAuthStateChange((evento, s) => {
+    if (evento === "INITIAL_SESSION" || evento === "SIGNED_IN" || evento === "SIGNED_OUT") {
+      // Fuera del callback: llamar a Supabase desde adentro puede trabar el
+      // candado de la sesión (lo advierte la documentación de supabase-js).
+      setTimeout(() => mostrar(s?.user.id ?? null), 0);
+    }
+  });
 }
 
 const CLAVE = "inroscan.persona";

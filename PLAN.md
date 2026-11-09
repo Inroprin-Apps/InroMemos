@@ -133,6 +133,14 @@ Quedó abierto en la prueba:
 6. **Bases de cuentas:** cargar en la tabla `bases_cuentas` el ID de cada hoja (Nacional, Importaciones, RRHH) y su pestaña; la cuenta conectada a Drive tiene que poder leerlas.
 7. **InroPay:** en «Áreas y permisos de memos» › Conexión con InroPay, generar el token y ponerlo en las propiedades del script de InroPay (GET la cola; POST `{memo, estado, detalle}`).
 
+## 5b. Comentarios de Finanzas (9-nov-2026) — hechos
+
+- **Sin corte entre pantallas:** la sesión se resuelve una vez por pestaña y la barra vive en el layout (`Marco`); al navegar solo cambia el contenido, con un fundido corto. Movimiento ligero en paneles y diálogos (≤ 220 ms; nada para quien pide menos movimiento).
+- **Módulos separados:** arriba de la barra, *Memorandums | Rendiciones*; cada uno con su menú y su administración (y «General»: personas, catálogos, Drive). La rendición de viáticos sale de un memo de entrega; el memo escrito en Word queda como camino de transición.
+- **Panel de memos compacto:** cifras en una franja (cada una lleva a su pestaña) y, al hacer clic en una fila, un **panel lateral** con lo esencial, los archivos (PDF, legajo, sustentos) y la **línea de tiempo** emisión → aprobación → envío → cargo → análisis → RG → programado → pagado, con el tiempo entre pasos (`lib/memo-linea.ts`).
+- **KPIs para las jefaturas** (cada una ve sus áreas; administración y «Ver KPIs», todas): calidad de respuesta, tiempos de ejecución (incluidos los avisos por correo), **acogida** (después de cada acción la app pregunta «¿cómo te fue?» con cinco caritas: tabla `valoraciones`) y **auditoría externa** (tabla `auditorias`, la escribe solo el sistema).
+- **Pendiente:** programar el agente externo que audite (p. ej. una vez al mes: correlativos sin saltos, memos aprobados con PDF en Drive, correos conciliados, estados de InroPay contra la base) y deje su informe en `auditorias`.
+
 ## 6. Lo que sigue
 
 | # | Qué | Depende de |

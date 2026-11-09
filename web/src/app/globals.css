@@ -119,3 +119,69 @@
     display: none;
   }
 }
+
+/*
+ * Movimiento ligero (comentarios de Finanzas, 9-nov-2026): la pantalla entra
+ * con un fundido corto, los paneles laterales se deslizan y los diálogos
+ * aparecen. Nada pasa de 220 ms, y quien pide menos movimiento no ve ninguno.
+ */
+@keyframes entrar {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes velo {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes desde-derecha {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes hacia-derecha {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes subir {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+}
+@utility animar-entrada {
+  animation: entrar 180ms ease-out both;
+}
+@utility animar-velo {
+  animation: velo 160ms ease-out both;
+}
+@utility animar-panel {
+  animation: desde-derecha 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@utility animar-panel-sale {
+  animation: hacia-derecha 180ms ease-in both;
+}
+@utility animar-dialogo {
+  animation: subir 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    ::before,
+    ::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+    }
+  }
+}
