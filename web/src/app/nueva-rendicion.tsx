@@ -51,13 +51,13 @@ export function NuevaRendicion({ persona, onCerrar }: { persona: Persona; onCerr
   );
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-ink/40 p-0 sm:items-center sm:p-4" onClick={onCerrar}>
+    <div className="animar-velo fixed inset-0 z-40 flex items-end justify-center bg-ink/40 p-0 sm:items-center sm:p-4" onClick={onCerrar}>
       <div
         ref={dialogo}
         role="dialog"
         aria-modal="true"
         aria-labelledby="nueva-titulo"
-        className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-t-card bg-surface p-5 shadow-card sm:rounded-card sm:p-6"
+        className="animar-dialogo max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-t-card bg-surface p-5 shadow-card sm:rounded-card sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-3">
@@ -189,7 +189,13 @@ function FormularioMemo({
 
   return (
     <form onSubmit={crear} className={`space-y-4 ${conCajas ? "mt-6 border-t border-line pt-5" : "mt-4"}`}>
-      <p className="text-sm font-medium text-ink-2">Memo de viáticos</p>
+      <p className="text-sm font-medium text-ink-2">Viáticos</p>
+      {paraRendir.length === 0 && (
+        <p className="rounded-control bg-primary-soft px-3 py-2.5 text-[13px] text-primary-strong">
+          Una rendición de viáticos sale de un memo: primero la jefatura emite la <b>Entrega de viáticos (a rendir)</b> en Memorandums
+          y, cuando se aprueba, aparece aquí para rendirla.
+        </p>
+      )}
       {paraRendir.length > 0 && (
         <div className="space-y-2">
           <p className="text-[13px] text-ink-2">Entregas de viáticos aprobadas, listas para rendir:</p>
@@ -215,7 +221,6 @@ function FormularioMemo({
               <span className="whitespace-nowrap text-[13px] font-semibold tabular-nums text-ink">{soles(Number(m.monto))}</span>
             </button>
           ))}
-          <p className="text-[12px] text-ink-3">O escribe uno emitido fuera de la plataforma:</p>
         </div>
       )}
       {dni === null && (
@@ -239,6 +244,9 @@ function FormularioMemo({
           </button>
         </div>
       )}
+      <details className="group rounded-control border border-line px-3 py-2.5">
+        <summary className="text-[13px] font-semibold text-ink-2">¿El memo es anterior a INROMEMOS (en Word)? Escríbelo aquí</summary>
+        <div className="mt-3 space-y-4">
       <div className="grid gap-4 sm:grid-cols-3">
         <label className="block text-sm font-medium text-ink-2">
           N° de memo
@@ -271,10 +279,12 @@ function FormularioMemo({
           </label>
         )}
       </div>
-      {error && <Aviso>{error}</Aviso>}
       <button type="submit" className={`w-full ${botonPrincipal}`} disabled={guardando}>
-        {guardando ? "Creando…" : "Crear memo"}
+        {guardando ? "Creando…" : "Empezar la rendición"}
       </button>
+        </div>
+      </details>
+      {error && <Aviso>{error}</Aviso>}
     </form>
   );
 }

@@ -3,6 +3,7 @@
 import { FallaDeBase } from "./errores-de-base";
 import { supabase } from "./supabase";
 import type { Archivo, Caja, Catalogos, Comprobante, Rendicion } from "./tipos";
+import { pedirValoracion } from "./valoracion";
 
 /**
  * Todo lo que la app le pide a la base, en un solo lugar. Cada función lanza
@@ -159,7 +160,9 @@ export async function cambiarRendicion(
 /** La base sube la versión y bloquea la edición hasta que administración la revise. */
 export async function enviar(id: string): Promise<Rendicion> {
   const r = await supabase().from("rendiciones").update({ estado: "enviada" }).eq("id", id).select("*").single();
-  return exigir(r) as Rendicion;
+  const rendicion = exigir(r) as Rendicion;
+  pedirValoracion({ accion: "rendir", rendicion_id: rendicion.id });
+  return rendicion;
 }
 
 /** El mismo cambio a varias filas a la vez (asignar proyecto, descartar…). */

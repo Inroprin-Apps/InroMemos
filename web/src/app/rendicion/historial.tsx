@@ -115,7 +115,7 @@ export function Historial({
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-ink/30" onClick={onCerrar}>
+    <div className="animar-velo fixed inset-0 z-40 flex justify-end bg-ink/30" onClick={onCerrar}>
       <aside
         role="dialog"
         aria-modal="true"

@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useLayoutEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { ruta } from "@/lib/base";
 import { pendientesActuales, usePendientes } from "@/lib/cola";
 import { useEnLinea } from "@/lib/conexion";
@@ -31,6 +32,7 @@ import {
   IconoSubir,
 } from "./iconos";
 import { NuevaRendicion } from "./nueva-rendicion";
+import { Valorar } from "./valorar";
 import { Aviso, botonPrincipal } from "./piezas";
 
 /** Qué está abierto, para marcarlo en la barra: una sección o el id de una rendición. */
@@ -49,10 +51,46 @@ export type Activo =
   | "drive"
   | (string & {});
 
+/** Los dos módulos: se emiten memos sin rendir nada; se rinde solo lo que entregó un memo. */
+export type Modulo = "memos" | "rendiciones";
+
+// Lo que la pantalla abierta le dice a la barra: qué marcar y si la quiere
+// en íconos. La barra vive en el layout y no se vuelve a armar al navegar.
+type Pantalla = { activo?: Activo; contraida: boolean };
+let pantalla: Pantalla = { contraida: false };
+const oyentesPantalla = new Set<() => void>();
+function marcarPantalla(p: Pantalla) {
+  if (p.activo === pantalla.activo && p.contraida === pantalla.contraida) return;
+  pantalla = p;
+  oyentesPantalla.forEach((f) => f());
+}
+const usePantalla = () =>
+  useSyncExternalStore(
+    (f) => (oyentesPantalla.add(f), () => oyentesPantalla.delete(f)),
+    () => pantalla,
+    () => pantalla,
+  );
+
+/**
+ * El marco de toda la app, en el layout: la barra lateral (en teléfono, la de
+ * abajo) se arma una vez y queda. Al cambiar de pantalla solo cambia el
+ * contenido, con un fundido corto: sin corte ni «Abriendo…».
+ */
+export function Marco({ children }: { children: ReactNode }) {
+  const sesion = useSesion();
+  const { activo, contraida } = usePantalla();
+  const camino = usePathname();
+  if (sesion.estado !== "dentro") return <>{children}</>;
+  return (
+    <Armazon persona={sesion.persona} activo={activo} forzarContraida={contraida} camino={camino}>
+      {children}
+    </Armazon>
+  );
+}
+
 /**
  * Toda página con datos pasa por acá: si no hay sesión muestra el ingreso, y
- * si la hay, la barra lateral (en teléfono, la de abajo) y el contenido con
- * la persona ya resuelta.
+ * si la hay, el contenido con la persona ya resuelta (la barra la pone Marco).
  */
 export function ConSesion({
   children,
@@ -65,6 +103,7 @@ export function ConSesion({
   contraida?: boolean;
 }) {
   const sesion = useSesion();
+  useLayoutEffect(() => marcarPantalla({ activo, contraida: Boolean(contraida) }), [activo, contraida]);
 
   if (sesion.estado === "cargando") {
     return (
@@ -76,23 +115,23 @@ export function ConSesion({
     );
   }
   if (sesion.estado === "fuera") return <Ingreso aviso={sesion.aviso} />;
-
-  return (
-    <Armazon persona={sesion.persona} activo={activo} forzarContraida={contraida}>
-      {children(sesion.persona)}
-    </Armazon>
-  );
+  return <>{children(sesion.persona)}</>;
 }
+
+/** El módulo de una dirección: todo lo que cuelga de /memos/ es de memorandums. */
+export const moduloDe = (camino: string): Modulo => (camino.startsWith("/memos") ? "memos" : "rendiciones");
 
 function Armazon({
   persona,
   activo,
   forzarContraida,
+  camino,
   children,
 }: {
   persona: Persona;
   activo?: Activo;
   forzarContraida?: boolean;
+  camino: string;
   children: ReactNode;
 }) {
   const [preferida, setPreferida] = useBarraContraida();
@@ -101,6 +140,7 @@ function Armazon({
   const [verCola, setVerCola] = useState(false);
   const cerrarCola = useCallback(() => setVerCola(false), []);
   const contraida = forzarContraida || preferida;
+  const modulo = moduloDe(camino);
 
   // Lo que quedó en el teléfono sube al abrir la app, al volver la señal, al
   // volver a la app y, mientras quede algo, cada medio minuto.
@@ -123,35 +163,44 @@ function Armazon({
       <BarraLateral
         persona={persona}
         activo={activo}
+        modulo={modulo}
         contraida={contraida}
         onAlternar={forzarContraida ? undefined : () => setPreferida(!preferida)}
         onNueva={() => setNueva(true)}
         onCola={() => setVerCola(true)}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <CabeceraMovil persona={persona} />
-        <main className="min-w-0 flex-1 px-4 pb-28 pt-4 md:px-6 md:pb-8 md:pt-6">{children}</main>
+        <CabeceraMovil persona={persona} modulo={modulo} />
+        <main key={camino} className="animar-entrada min-w-0 flex-1 px-4 pb-28 pt-4 md:px-6 md:pb-8 md:pt-6">
+          {children}
+        </main>
       </div>
-      <NavInferior persona={persona} activo={activo} onNueva={() => setNueva(true)} onCola={() => setVerCola(true)} />
+      <NavInferior persona={persona} activo={activo} modulo={modulo} onNueva={() => setNueva(true)} onCola={() => setVerCola(true)} />
       {nueva && <NuevaRendicion persona={persona} onCerrar={cerrarNueva} />}
       {verCola && <PorSubir onCerrar={cerrarCola} />}
+      <Valorar />
     </div>
   );
 }
 
-const ADMIN: { clave: Activo; texto: string; href: string; Icono: (p: { className?: string }) => ReactNode }[] = [
+type Item = { clave: Activo; texto: string; href: string; Icono: (p: { className?: string }) => ReactNode };
+
+// Administración de cada módulo, y la que comparten (personas, catálogos, Drive).
+const ADMIN_MEMOS: Item[] = [{ clave: "memos-config", texto: "Áreas y permisos", href: "/memos/configuracion/", Icono: IconoAjustes }];
+const ADMIN_RENDICIONES: Item[] = [
   { clave: "bandeja", texto: "Bandeja de revisión", href: "/bandeja/", Icono: IconoBandeja },
-  { clave: "memos-config", texto: "Áreas y permisos de memos", href: "/memos/configuracion/", Icono: IconoAjustes },
   { clave: "cajas", texto: "Cajas chicas", href: "/cajas/", Icono: IconoCaja },
-  { clave: "catalogos", texto: "Catálogos", href: "/catalogos/", Icono: IconoLista },
-  { clave: "personas", texto: "Personas", href: "/personas/", Icono: IconoPersonas },
   { clave: "reportes", texto: "Reportes", href: "/reportes/", Icono: IconoReportes },
+];
+const ADMIN_GENERAL: Item[] = [
+  { clave: "personas", texto: "Personas", href: "/personas/", Icono: IconoPersonas },
+  { clave: "catalogos", texto: "Catálogos", href: "/catalogos/", Icono: IconoLista },
   { clave: "drive", texto: "Drive", href: "/drive/", Icono: IconoNube },
 ];
 
 // Ítem del menú: 13.5px, 600, esquina de botón grande; activo en azul suave.
 const enlace = (activo: boolean) =>
-  `flex min-h-10 items-center gap-2.5 rounded-button-lg px-2.5 text-[13.5px] font-semibold transition ${
+  `flex min-h-10 items-center gap-2.5 rounded-button-lg px-2.5 text-[13.5px] font-semibold transition-colors duration-150 ${
     activo ? "bg-primary-soft text-primary-strong" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
   }`;
 
@@ -181,9 +230,65 @@ function useMemosPorAtender(persona: Persona): number {
   return (memos ?? []).filter((m) => espera(m, persona, contexto?.permisos ?? null)).length;
 }
 
+/** Los KPIs son para las jefaturas (y administración, o quien tenga el permiso). */
+export function veKpis(persona: Persona, permisos: { aprueba: number[]; verKpis: boolean } | null | undefined): boolean {
+  return persona.es_administracion || Boolean(permisos?.verKpis) || (permisos?.aprueba.length ?? 0) > 0;
+}
+
+/** Lo que hay en cada módulo para esta persona, en orden. */
+function useMenu(persona: Persona, modulo: Modulo) {
+  const permisos = useContextoMemos(persona.correo).contexto?.permisos;
+  const { rendiciones } = useRendiciones();
+  const porAtender = useMemosPorAtender(persona);
+  const porRevisar = (rendiciones ?? []).filter((r) => r.estado === "enviada").length;
+  const observadas = (rendiciones ?? []).filter((r) => r.responsable_id === persona.id && r.estado === "observada").length;
+
+  const items: (Item & { n?: number; accion?: "nueva" })[] =
+    modulo === "memos"
+      ? [
+          { clave: "memos", texto: "Panel de memos", href: "/memos/", Icono: IconoMemo, n: porAtender },
+          { clave: "emitir", texto: "Emitir memo", href: "/memos/emitir/", Icono: IconoMas },
+          ...(veKpis(persona, permisos) ? [{ clave: "kpis", texto: "Métricas y KPIs", href: "/memos/kpis/", Icono: IconoReportes }] : []),
+          ...(persona.es_administracion || permisos?.verificaCuentas
+            ? [{ clave: "cuentas", texto: "Cuentas por verificar", href: "/memos/cuentas/", Icono: IconoCheck }]
+            : []),
+        ]
+      : [
+          { clave: "inicio", texto: "Mis rendiciones", href: "/", Icono: IconoInicio, n: observadas },
+          { clave: "nueva", texto: "Nueva rendición", href: "/", Icono: IconoMas, accion: "nueva" as const },
+        ];
+  const admin = persona.es_administracion ? (modulo === "memos" ? ADMIN_MEMOS : ADMIN_RENDICIONES) : [];
+  return { items, admin, general: persona.es_administracion ? ADMIN_GENERAL : [], porAtender, porRevisar, observadas };
+}
+
+/** Memorandums | Rendiciones: el interruptor de módulo, arriba de la barra. */
+function SelectorModulo({ modulo, porAtender, porRevisar }: { modulo: Modulo; porAtender: number; porRevisar: number }) {
+  const opcion = (m: Modulo, href: string, texto: string, n: number) => (
+    <Link
+      href={href}
+      aria-current={modulo === m ? "page" : undefined}
+      className={`flex flex-1 items-center justify-center gap-1.5 rounded-segment px-2 py-1.75 text-[12.5px] font-bold transition-colors duration-150 ${
+        modulo === m ? "bg-ink text-on-fill" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
+      }`}
+    >
+      {texto}
+      {n > 0 && (
+        <span className={`rounded-full px-1.5 text-[10.5px] tabular-nums ${modulo === m ? "bg-on-fill/20" : "bg-danger text-on-fill"}`}>{n}</span>
+      )}
+    </Link>
+  );
+  return (
+    <div role="navigation" aria-label="Módulo" className="flex rounded-control border border-control bg-surface p-0.75">
+      {opcion("memos", "/memos/", "Memorandums", porAtender)}
+      {opcion("rendiciones", "/", "Rendiciones", porRevisar)}
+    </div>
+  );
+}
+
 function BarraLateral({
   persona,
   activo,
+  modulo,
   contraida,
   onAlternar,
   onNueva,
@@ -191,6 +296,7 @@ function BarraLateral({
 }: {
   persona: Persona;
   activo?: Activo;
+  modulo: Modulo;
   contraida: boolean;
   onAlternar?: () => void;
   onNueva: () => void;
@@ -201,9 +307,17 @@ function BarraLateral({
   const mias = (rendiciones ?? []).filter(
     (r) => r.responsable_id === persona.id && (EN_CURSO as readonly string[]).includes(r.estado),
   );
-  const porRevisar = (rendiciones ?? []).filter((r) => r.estado === "enviada").length;
-  const porAtender = useMemosPorAtender(persona);
-  const permisosMemo = useContextoMemos(persona.correo).contexto?.permisos;
+  const { items, admin, general, porAtender, porRevisar } = useMenu(persona, modulo);
+  const aIcono = (it: Item & { accion?: "nueva" }) =>
+    it.accion ? (
+      <button key={it.clave} type="button" onClick={onNueva} aria-label={it.texto} title={it.texto} className={`${enlace(false)} h-11 w-11 justify-center px-0`}>
+        <it.Icono />
+      </button>
+    ) : (
+      <Link key={it.clave} href={it.href} aria-label={it.texto} title={it.texto} className={`${enlace(activo === it.clave)} h-11 w-11 justify-center px-0`}>
+        <it.Icono />
+      </Link>
+    );
 
   if (contraida) {
     return (
@@ -214,21 +328,15 @@ function BarraLateral({
         <Link href="/" aria-label="INROMEMOS, inicio" className="mb-2">
           <Image src={ruta("inroprin-marca.svg")} alt="" width={28} height={28} />
         </Link>
-        <Link href="/memos/" aria-label="Panel de memos" title="Panel de memos" className={`${enlace(activo === "memos")} h-11 w-11 justify-center px-0`}>
-          <IconoMemo />
+        <Link
+          href={modulo === "memos" ? "/" : "/memos/"}
+          title={modulo === "memos" ? "Ir a Rendiciones" : "Ir a Memorandums"}
+          className="mb-1 rounded-segment bg-ink px-1.5 py-1 text-[10px] font-bold text-on-fill"
+        >
+          {modulo === "memos" ? "MEMOS" : "REND."}
         </Link>
-        <Link href="/memos/emitir/" aria-label="Emitir memo" title="Emitir memo" className={`${enlace(activo === "emitir")} h-11 w-11 justify-center px-0`}>
-          <IconoMas />
-        </Link>
-        <Link href="/" aria-label="Mis rendiciones" title="Mis rendiciones" className={`${enlace(activo === "inicio")} h-11 w-11 justify-center px-0`}>
-          <IconoInicio />
-        </Link>
-        {persona.es_administracion &&
-          ADMIN.map((a) => (
-            <Link key={a.clave} href={a.href} aria-label={a.texto} title={a.texto} className={`${enlace(activo === a.clave)} h-11 w-11 justify-center px-0`}>
-              <a.Icono />
-            </Link>
-          ))}
+        {items.map(aIcono)}
+        {[...admin, ...general].map(aIcono)}
         {onAlternar && (
           <button type="button" onClick={onAlternar} aria-label="Expandir la barra" title="Expandir la barra" className="mt-auto flex h-11 w-11 items-center justify-center rounded-control text-ink-2 hover:bg-surface-2">
             <IconoDerecha />
@@ -258,45 +366,28 @@ function BarraLateral({
         )}
       </div>
 
-      <div className="flex flex-col gap-0.5">
-        <p className={grupo}>Memorandums</p>
-        <Link href="/memos/" className={enlace(activo === "memos")}>
-          <IconoMemo className="h-4.25 w-4.25" />
-          Panel de memos
-          <Insignia n={porAtender} />
-        </Link>
-        <Link href="/memos/emitir/" className={enlace(activo === "emitir")}>
-          <IconoMas className="h-4.25 w-4.25" />
-          Emitir memo
-        </Link>
-        {(persona.es_administracion || permisosMemo?.verKpis) && (
-          <Link href="/memos/kpis/" className={enlace(activo === "kpis")}>
-            <IconoReportes className="h-4.25 w-4.25" />
-            Métricas y KPIs
-          </Link>
-        )}
-        {(persona.es_administracion || permisosMemo?.verificaCuentas) && (
-          <Link href="/memos/cuentas/" className={enlace(activo === "cuentas")}>
-            <IconoCheck className="h-4.25 w-4.25" />
-            Cuentas por verificar
-          </Link>
+      <SelectorModulo modulo={modulo} porAtender={porAtender} porRevisar={persona.es_administracion ? porRevisar : 0} />
+
+      <div key={modulo} className="animar-entrada flex flex-col gap-0.5">
+        <p className={grupo}>{modulo === "memos" ? "Memorandums" : "Rendiciones"}</p>
+        {items.map((it) =>
+          it.accion ? (
+            <button key={it.clave} type="button" onClick={onNueva} className={enlace(false)}>
+              <it.Icono className="h-4.25 w-4.25" />
+              {it.texto}
+            </button>
+          ) : (
+            <Link key={it.clave} href={it.href} className={enlace(activo === it.clave)}>
+              <it.Icono className="h-4.25 w-4.25" />
+              {it.texto}
+              <Insignia n={it.n ?? 0} />
+            </Link>
+          ),
         )}
       </div>
 
-      <div className="flex flex-col gap-0.5">
-        <p className={grupo}>Rendiciones</p>
-        <Link href="/" className={enlace(activo === "inicio")}>
-          <IconoInicio className="h-4.25 w-4.25" />
-          Mis rendiciones
-        </Link>
-        <button type="button" onClick={onNueva} className={enlace(false)}>
-          <IconoMas className="h-4.25 w-4.25" />
-          Nueva rendición
-        </button>
-      </div>
-
-      {mias.length > 0 && (
-        <div className="flex flex-col gap-1">
+      {modulo === "rendiciones" && mias.length > 0 && (
+        <div className="animar-entrada flex flex-col gap-1">
           <p className={grupo}>En curso</p>
           {mias.map((r) => {
             const c = cuentas(r.comprobantes, r.monto, r.no_sustentan ?? []);
@@ -305,7 +396,7 @@ function BarraLateral({
               <Link
                 key={r.id}
                 href={`/rendicion/?id=${r.id}`}
-                className={`flex flex-col gap-1.5 rounded-control px-2.5 py-2 text-[13px] ${
+                className={`flex flex-col gap-1.5 rounded-control px-2.5 py-2 text-[13px] transition-colors duration-150 ${
                   activo === r.id ? "bg-primary-soft font-semibold text-primary-strong" : "font-medium text-ink-2 hover:bg-surface-2"
                 }`}
               >
@@ -317,7 +408,7 @@ function BarraLateral({
                 </span>
                 <span className="h-1 overflow-hidden rounded-full bg-line">
                   <span
-                    className={`block h-full ${observada ? "bg-danger" : "bg-primary"}`}
+                    className={`block h-full transition-[width] duration-300 ${observada ? "bg-danger" : "bg-primary"}`}
                     style={{ width: `${Math.min(c.consumo ?? 0, 100)}%` }}
                   />
                 </span>
@@ -327,10 +418,10 @@ function BarraLateral({
         </div>
       )}
 
-      {persona.es_administracion && (
-        <div className="flex flex-col gap-0.5">
+      {admin.length > 0 && (
+        <div key={`admin-${modulo}`} className="animar-entrada flex flex-col gap-0.5">
           <p className={grupo}>Administración</p>
-          {ADMIN.map((a) => (
+          {admin.map((a) => (
             <Link key={a.clave} href={a.href} className={enlace(activo === a.clave)}>
               <a.Icono className="h-4.5 w-4.5" />
               {a.texto}
@@ -339,6 +430,18 @@ function BarraLateral({
                   {porRevisar}
                 </span>
               )}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {general.length > 0 && (
+        <div className="flex flex-col gap-0.5">
+          <p className={grupo}>General</p>
+          {general.map((a) => (
+            <Link key={a.clave} href={a.href} className={enlace(activo === a.clave)}>
+              <a.Icono className="h-4.5 w-4.5" />
+              {a.texto}
             </Link>
           ))}
         </div>
@@ -399,14 +502,18 @@ function BotonSalir({ conTexto }: { conTexto?: boolean }) {
   );
 }
 
-function CabeceraMovil({ persona }: { persona: Persona }) {
+function CabeceraMovil({ persona, modulo }: { persona: Persona; modulo: Modulo }) {
+  const { porAtender, porRevisar } = useMenu(persona, modulo);
   return (
-    <header className="flex items-center gap-2.5 border-b border-line bg-surface px-4 py-3 md:hidden">
-      <Link href="/" className="flex items-center gap-2">
-        <Image src={ruta("inroprin-marca.svg")} alt="" width={26} height={26} />
-        <Marca />
-      </Link>
-      <span className="ml-auto truncate text-sm text-ink-2">{persona.nombre || persona.correo}</span>
+    <header className="flex flex-col gap-2.5 border-b border-line bg-surface px-4 py-3 md:hidden">
+      <div className="flex items-center gap-2.5">
+        <Link href="/" className="flex items-center gap-2">
+          <Image src={ruta("inroprin-marca.svg")} alt="" width={26} height={26} />
+          <Marca />
+        </Link>
+        <span className="ml-auto truncate text-sm text-ink-2">{persona.nombre || persona.correo}</span>
+      </div>
+      <SelectorModulo modulo={modulo} porAtender={porAtender} porRevisar={persona.es_administracion ? porRevisar : 0} />
     </header>
   );
 }
@@ -414,34 +521,55 @@ function CabeceraMovil({ persona }: { persona: Persona }) {
 function NavInferior({
   persona,
   activo,
+  modulo,
   onNueva,
   onCola,
 }: {
   persona: Persona;
   activo?: Activo;
+  modulo: Modulo;
   onNueva: () => void;
   onCola: () => void;
 }) {
   const enCola = usePendientes().length;
+  const { porAtender } = useMenu(persona, modulo);
   const item = (on: boolean) =>
-    `flex min-w-16 flex-col items-center gap-0.5 text-[11px] font-semibold ${on ? "text-primary-strong" : "text-ink-2"}`;
+    `flex min-w-16 flex-col items-center gap-0.5 text-[11px] font-semibold transition-colors duration-150 ${on ? "text-primary-strong" : "text-ink-2"}`;
   return (
     <nav
       aria-label="Navegación"
       className="fixed inset-x-0 bottom-0 z-30 flex h-17 items-center justify-around border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
     >
-      <Link href="/memos/" className={item(activo === "memos" || activo === "emitir")}>
-        <IconoMemo className="h-5.5 w-5.5" />
-        Memos
-      </Link>
-      <Link href="/" className={item(activo === "inicio")}>
-        <IconoInicio className="h-5.5 w-5.5" />
-        Rendiciones
-      </Link>
-      <button type="button" onClick={onNueva} className={item(false)}>
-        <IconoMas className="h-5.5 w-5.5" />
-        Nueva
-      </button>
+      {modulo === "memos" ? (
+        <>
+          <Link href="/memos/" className={item(activo === "memos")}>
+            <span className="relative flex">
+              <IconoMemo className="h-5.5 w-5.5" />
+              {porAtender > 0 && (
+                <span className="absolute -right-3 -top-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-on-fill">
+                  {porAtender}
+                </span>
+              )}
+            </span>
+            Panel
+          </Link>
+          <Link href="/memos/emitir/" className={item(activo === "emitir")}>
+            <IconoMas className="h-5.5 w-5.5" />
+            Emitir
+          </Link>
+        </>
+      ) : (
+        <>
+          <Link href="/" className={item(activo === "inicio")}>
+            <IconoInicio className="h-5.5 w-5.5" />
+            Mis rendiciones
+          </Link>
+          <button type="button" onClick={onNueva} className={item(false)}>
+            <IconoMas className="h-5.5 w-5.5" />
+            Nueva
+          </button>
+        </>
+      )}
       {enCola > 0 && (
         <button type="button" onClick={onCola} className={item(false)}>
           <span className="relative flex">
@@ -453,7 +581,7 @@ function NavInferior({
           Por subir
         </button>
       )}
-      {persona.es_administracion && (
+      {persona.es_administracion && modulo === "rendiciones" && (
         <Link href="/bandeja/" className={item(activo === "bandeja")}>
           <IconoBandeja className="h-5.5 w-5.5" />
           Bandeja
@@ -484,7 +612,7 @@ function Ingreso({ aviso }: { aviso: string | null }) {
       <section className="w-full max-w-md rounded-card border border-control bg-surface p-6 sm:p-8">
         <Image src={ruta("inroprin.svg")} alt="INROPRIN" width={183} height={41} priority />
         <h1 className="mt-6 text-2xl font-bold text-ink">INROMEMOS</h1>
-        <p className="mt-2 text-ink-2">Rendiciones de caja chica y memos de viáticos.</p>
+        <p className="mt-2 text-ink-2">Memorandums de las empresas del grupo, y rendiciones de caja chica y viáticos.</p>
 
         {(aviso || falla) && (
           <div className="mt-5">
@@ -514,12 +642,12 @@ function PorSubir({ onCerrar }: { onCerrar: () => void }) {
   const grupos = [...new Set(pendientes.map((p) => p.rendicionId))];
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-ink/40 sm:items-center sm:p-4" onClick={onCerrar}>
+    <div className="animar-velo fixed inset-0 z-40 flex items-end justify-center bg-ink/40 sm:items-center sm:p-4" onClick={onCerrar}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="cola-titulo"
-        className="w-full max-w-md rounded-t-card bg-surface p-5 shadow-card sm:rounded-card"
+        className="animar-dialogo w-full max-w-md rounded-t-card bg-surface p-5 shadow-card sm:rounded-card"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="cola-titulo" className="text-lg font-bold text-ink">

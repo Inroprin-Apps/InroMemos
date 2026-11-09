@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { dinero, leerKpis, useContextoMemos, type Kpis } from "@/lib/memos";
 import type { Persona } from "@/lib/sesion";
-import { ConSesion } from "../../marco";
+import { TEXTO_ACCION, type Accion } from "@/lib/valoracion";
+import { ConSesion, veKpis } from "../../marco";
 import { Aviso, campoSuelto } from "../../piezas";
 import { Encabezado, Kpi, Tarjeta } from "../piezas-memo";
 
@@ -13,17 +14,23 @@ export function KpisMemos() {
 
 const hoy = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Lima" });
 const haceDias = (n: number) => new Date(Date.now() - n * 864e5).toLocaleDateString("en-CA", { timeZone: "America/Lima" });
-const horas = (h: number | null) => (h == null ? "—" : h < 1 ? `${Math.round(h * 60)} min` : `${h.toLocaleString("es-PE")} h`);
+const horas = (h: number | null) => (h == null ? "—" : h < 1 ? `${Math.round(h * 60)} min` : h >= 48 ? `${Math.round(h / 24)} d` : `${h.toLocaleString("es-PE")} h`);
+const minutos = (m: number | null) => (m == null ? "—" : m < 1 ? "< 1 min" : `${m.toLocaleString("es-PE")} min`);
 const pct = (p: number | null) => (p == null ? "—" : `${p}%`);
+const CARAS = ["", "😞", "🙁", "😐", "🙂", "😄"];
 
-/** Indicadores de los memos: tiempo, calidad y felicidad. Solo con el permiso «Ver KPIs». */
+/**
+ * Indicadores de la plataforma, para las jefaturas (cada una ve sus áreas;
+ * administración y «Ver KPIs», todas): calidad de respuesta, tiempos de
+ * ejecución, acogida de los usuarios y la última auditoría externa.
+ */
 function Contenido({ persona }: { persona: Persona }) {
   const { contexto } = useContextoMemos(persona.correo);
   const [desde, setDesde] = useState(haceDias(90));
   const [hasta, setHasta] = useState(hoy());
   const [k, setK] = useState<Kpis | null>(null);
   const [falla, setFalla] = useState<string | null>(null);
-  const permitido = persona.es_administracion || contexto?.permisos.verKpis;
+  const permitido = veKpis(persona, contexto?.permisos);
 
   useEffect(() => {
     if (!permitido) return;
@@ -41,16 +48,20 @@ function Contenido({ persona }: { persona: Persona }) {
     return (
       <div className="space-y-4">
         <Encabezado titulo="Métricas y KPIs" />
-        <Aviso tono="info">Los indicadores son solo para quien tiene el permiso «Ver KPIs». Pídeselo a administración.</Aviso>
+        <Aviso tono="info">Los indicadores son para las jefaturas de área. Si los necesitas, pídeselo a administración.</Aviso>
       </div>
     );
   }
   const max = Math.max(1, ...(k?.por_area ?? []).map((a) => a.emitidos));
   const hueco = <span className="hueco h-6.5 w-20" />;
+  const totalAcogida = Math.max(1, Object.values(k?.acogida_dist ?? {}).reduce((s, x) => s + x, 0));
 
   return (
-    <div className="space-y-4">
-      <Encabezado titulo="Métricas y KPIs" descripcion="Tiempo, calidad de respuesta y felicidad, sobre los memos emitidos en el período.">
+    <div className="space-y-5">
+      <Encabezado
+        titulo="Métricas y KPIs"
+        descripcion={k ? (k.alcance === "todas" ? "Todas las áreas." : `Tus áreas: ${k.alcance}.`) : "Calidad, tiempos y acogida de la plataforma."}
+      >
         <label className="flex items-center gap-2 text-[13px] text-ink-2">
           Desde
           <input type="date" className={campoSuelto} value={desde} onChange={(e) => setDesde(e.target.value)} />
@@ -62,78 +73,158 @@ function Contenido({ persona }: { persona: Persona }) {
       </Encabezado>
       {falla && <Aviso>{falla}</Aviso>}
 
-      <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
-        <Kpi etiqueta="Emitidos" valor={k ? k.emitidos : hueco} nota={k ? `${k.anulados} anulados · ${k.pendientes} por aprobar` : undefined} />
+      <Seccion titulo="Calidad de respuesta" nota="Lo que sale bien a la primera, sin observaciones ni devoluciones">
         <Kpi
           etiqueta="Aprobados a la primera"
           valor={k ? pct(k.a_la_primera_pct) : hueco}
-          nota={k ? `${k.observados_alguna_vez} observados alguna vez` : undefined}
+          nota={k ? `de ${k.emitidos} emitidos en el período` : undefined}
           riesgo={!!k && k.a_la_primera_pct != null && k.a_la_primera_pct < 80}
         />
+        <Kpi etiqueta="Observaciones" valor={k ? k.observaciones : hueco} nota={k ? `${k.observados_alguna_vez} memos observados alguna vez` : undefined} />
         <Kpi
-          etiqueta="Tiempo de aprobación"
-          valor={k ? horas(k.horas_aprobacion_mediana) : hueco}
-          nota={k ? `mediana · promedio ${horas(k.horas_aprobacion)}` : undefined}
+          etiqueta="Devueltos por Análisis"
+          valor={k ? k.devueltos_analisis : hueco}
+          nota="observados al revisar el pago"
+          riesgo={!!k && k.devueltos_analisis > 0}
         />
+        <Kpi etiqueta="Anulados" valor={k ? k.anulados : hueco} nota={k ? `${k.pendientes} esperan aprobación` : undefined} />
+      </Seccion>
+
+      <Seccion titulo="Tiempos de ejecución" nota="Medianas: la mitad de los casos tardó menos que esto">
+        <Kpi etiqueta="Aprobar" valor={k ? horas(k.horas_aprobacion_mediana) : hueco} nota={k ? `promedio ${horas(k.horas_aprobacion)}` : undefined} />
         <Kpi
           etiqueta={`Cargo en meta (${k?.meta_horas ?? 3} h)`}
           valor={k ? pct(k.cargo_en_meta_pct) : hueco}
           nota={k ? `promedio ${horas(k.horas_cargo)}` : undefined}
           riesgo={!!k && k.cargo_en_meta_pct != null && k.cargo_en_meta_pct < 80}
         />
-        <Kpi etiqueta="Felicidad" valor={k ? (k.valoracion ?? "—") : hueco} nota="valoración promedio del cargo, de 1 a 5" />
-        <Kpi etiqueta="Monto pedido" valor={k ? dinero(k.monto_pen, "PEN") : hueco} nota="en soles, sin anulados" />
-        <Kpi etiqueta="Pagados" valor={k ? k.pagados : hueco} nota="según Tesorería o InroPay" />
-      </div>
+        <Kpi etiqueta="De aprobado a pagado" valor={k ? horas(k.horas_pago_mediana) : hueco} nota={k ? `${k.pagados} pagados` : undefined} />
+        <Kpi
+          etiqueta="Avisos por correo"
+          valor={k ? minutos(k.correo_minutos_mediana) : hueco}
+          nota={k ? `${k.correos} correos · ${k.correos_con_error} con error` : undefined}
+          riesgo={!!k && k.correos_con_error > 0}
+        />
+      </Seccion>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Tarjeta titulo="Por área" nota="Memos emitidos en el período">
+        <Tarjeta titulo="Acogida de los usuarios" nota={k ? `${k.acogida_n} valoraciones de cada acción` : undefined}>
           {!k ? (
             <span className="hueco h-24 w-full" />
-          ) : k.por_area.length === 0 ? (
-            <p className="text-[13px] text-ink-3">Sin memos en el período.</p>
+          ) : k.acogida_n === 0 ? (
+            <p className="text-[13px] text-ink-3">Todavía nadie valoró. Después de cada acción la app pregunta «¿cómo te fue?» con cinco caritas.</p>
           ) : (
-            <ul className="space-y-3">
-              {k.por_area.map((a) => (
-                <li key={`${a.empresa}-${a.area}`}>
-                  <div className="mb-1 flex items-baseline justify-between gap-2.5">
-                    <span className="truncate text-[13.5px] font-semibold text-ink">
-                      {a.empresa} · {a.area}
-                    </span>
-                    <span className="whitespace-nowrap text-[12.5px] text-ink-2">
-                      {a.emitidos} · {a.observados} observados · {dinero(a.monto, "PEN")}
-                    </span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-bar bg-surface-3">
-                    <span className="block h-full rounded-bar bg-primary" style={{ width: `${(a.emitidos / max) * 100}%` }} />
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <div className="space-y-4">
+              <p className="flex items-baseline gap-2">
+                <span className="text-[28px] font-extrabold tabular-nums text-ink">{k.acogida?.toLocaleString("es-PE")}</span>
+                <span className="text-[13px] text-ink-2">de 5 · {CARAS[Math.round(k.acogida ?? 0)]}</span>
+              </p>
+              <ul className="space-y-1.5">
+                {[5, 4, 3, 2, 1].map((n) => {
+                  const c = k.acogida_dist[String(n)] ?? 0;
+                  return (
+                    <li key={n} className="flex items-center gap-3 text-[13px]">
+                      <span className="w-6 text-center">{CARAS[n]}</span>
+                      <span className="h-2 flex-1 overflow-hidden rounded-bar bg-surface-3">
+                        <span
+                          className={`block h-full rounded-bar transition-[width] duration-500 ${n >= 4 ? "bg-success" : n === 3 ? "bg-warning" : "bg-danger"}`}
+                          style={{ width: `${(c / totalAcogida) * 100}%` }}
+                        />
+                      </span>
+                      <span className="w-8 text-right tabular-nums text-ink-2">{c}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <ul className="flex flex-wrap gap-1.5">
+                {k.acogida_por_accion.map((a) => (
+                  <li key={a.accion} className="rounded-full bg-surface-2 px-2.5 py-1 text-[12px] text-ink-2">
+                    {TEXTO_ACCION[a.accion as Accion] ?? a.accion}: <b className="text-ink">{a.promedio}</b> ({a.n})
+                  </li>
+                ))}
+              </ul>
+              {k.comentarios.length > 0 && (
+                <ul className="space-y-1.5 border-t border-line pt-3">
+                  {k.comentarios.map((c, i) => (
+                    <li key={i} className="text-[12.5px] text-ink-2">
+                      <span className="mr-1">{CARAS[c.puntaje]}</span>«{c.comentario}»
+                      <span className="text-ink-3"> · {TEXTO_ACCION[c.accion as Accion] ?? c.accion}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
         </Tarjeta>
-        <Tarjeta titulo="Felicidad del cargo" nota="Cuántas valoraciones de cada puntaje">
+
+        <Tarjeta titulo="Auditoría externa" nota="Un revisor de afuera: no solo los números de la plataforma">
           {!k ? (
             <span className="hueco h-24 w-full" />
+          ) : !k.auditoria ? (
+            <p className="text-[13px] text-ink-3">
+              Todavía no hay informes. La auditoría la hace un agente externo que revisa la base y Drive por su cuenta y deja aquí su informe.
+            </p>
           ) : (
-            <ul className="space-y-2">
-              {[5, 4, 3, 2, 1].map((n) => {
-                const c = k.valoraciones[String(n)] ?? 0;
-                const total = Math.max(1, Object.values(k.valoraciones).reduce((s, x) => s + x, 0));
-                return (
-                  <li key={n} className="flex items-center gap-3 text-[13px]">
-                    <span className="w-4 font-bold text-ink">{n}</span>
-                    <span className="h-2 flex-1 overflow-hidden rounded-bar bg-surface-3">
-                      <span className={`block h-full rounded-bar ${n >= 4 ? "bg-success" : n === 3 ? "bg-warning" : "bg-danger"}`} style={{ width: `${(c / total) * 100}%` }} />
-                    </span>
-                    <span className="w-8 text-right tabular-nums text-ink-2">{c}</span>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="space-y-2">
+              <p className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[12.5px] font-bold ${
+                    k.auditoria.nivel === "ok"
+                      ? "bg-success-soft text-success-strong"
+                      : k.auditoria.nivel === "observaciones"
+                        ? "bg-warning-soft text-warning-strong"
+                        : "bg-danger-soft text-danger-strong"
+                  }`}
+                >
+                  {k.auditoria.nivel === "ok" ? "Sin hallazgos" : k.auditoria.nivel === "observaciones" ? `${k.auditoria.hallazgos} observaciones` : "Hallazgos críticos"}
+                </span>
+                <span className="text-[12px] text-ink-3">
+                  {new Date(k.auditoria.en).toLocaleDateString("es-PE", { day: "numeric", month: "short", year: "numeric" })} · {k.auditoria.auditor}
+                </span>
+              </p>
+              <p className="text-[13px] text-ink-2">{k.auditoria.resumen}</p>
+            </div>
           )}
         </Tarjeta>
       </div>
+
+      <Tarjeta titulo="Por área" nota={k ? `${k.emitidos} memos · ${dinero(k.monto_pen, "PEN")} pedidos en soles` : undefined}>
+        {!k ? (
+          <span className="hueco h-24 w-full" />
+        ) : k.por_area.length === 0 ? (
+          <p className="text-[13px] text-ink-3">Sin memos en el período.</p>
+        ) : (
+          <ul className="space-y-3">
+            {k.por_area.map((a) => (
+              <li key={`${a.empresa}-${a.area}`}>
+                <div className="mb-1 flex items-baseline justify-between gap-2.5">
+                  <span className="truncate text-[13.5px] font-semibold text-ink">
+                    {a.empresa} · {a.area}
+                  </span>
+                  <span className="whitespace-nowrap text-[12.5px] text-ink-2">
+                    {a.emitidos} · {a.observados} observados · {dinero(a.monto, "PEN")}
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-bar bg-surface-3">
+                  <span className="block h-full rounded-bar bg-primary transition-[width] duration-500" style={{ width: `${(a.emitidos / max) * 100}%` }} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Tarjeta>
     </div>
+  );
+}
+
+function Seccion({ titulo, nota, children }: { titulo: string; nota: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <div className="mb-2 flex flex-wrap items-baseline gap-x-2.5">
+        <h2 className="text-[15px] font-bold text-ink">{titulo}</h2>
+        <span className="text-[12px] text-ink-3">{nota}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{children}</div>
+    </section>
   );
 }
