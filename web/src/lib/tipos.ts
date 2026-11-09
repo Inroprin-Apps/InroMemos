@@ -88,7 +88,10 @@ export const EDITABLE: EstadoRendicion[] = ["abierta", "observada"];
 /** Una foto o PDF subido. Sus comprobantes salen de leerlo. */
 export type Archivo = {
   id: string;
+  /** Vacía cuando la imagen ya se archivó en Drive (al aprobarse la rendición). */
   ruta: string | null;
+  /** La copia verificada en Drive. */
+  drive_id?: string | null;
   tipo_mime: string;
   estado_lectura: "pendiente" | "procesando" | "leido" | "fallido";
   error: string | null;

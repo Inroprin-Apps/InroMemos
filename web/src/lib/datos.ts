@@ -109,7 +109,7 @@ export async function leerRendicion(id: string): Promise<DatosRendicion> {
   const [rendicion, comprobantes, archivos] = await Promise.all([
     db.from("rendiciones").select("*, responsable:personas(nombre, correo)").eq("id", id).single(),
     db.from("comprobantes").select("*").eq("rendicion_id", id).order("creado_en").order("pagina"),
-    db.from("archivos").select("id, ruta, tipo_mime, estado_lectura, error").eq("rendicion_id", id),
+    db.from("archivos").select("id, ruta, drive_id, tipo_mime, estado_lectura, error").eq("rendicion_id", id),
   ]);
   const r = exigir(rendicion) as DatosRendicion["rendicion"];
   let caja: Caja | null = null;
