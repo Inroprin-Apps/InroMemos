@@ -141,6 +141,9 @@ export function Miniatura({
     );
   }
   const pdf = archivo.tipo_mime === "application/pdf";
+  // Aprobada la rendición, la imagen vive en Drive (la copia se verificó antes
+  // de borrarla de la app): la miniatura sale de ahí.
+  if (!archivo.ruta && archivo.drive_id) return <MiniaturaDrive id={archivo.drive_id} pdf={pdf} pagina={pagina} className={className} />;
   if (!enlace) return <span className={`block ${className} animate-pulse rounded-md bg-surface-2`} />;
   if (pdf) {
     return (
@@ -152,3 +155,30 @@ export function Miniatura({
   // eslint-disable-next-line @next/next/no-img-element -- enlace firmado y temporal: no pasa por el optimizador
   return <img src={enlace} alt="Comprobante" className={`${className} rounded-md border border-control object-cover`} />;
 }
+
+/** La miniatura de una imagen archivada en Drive; si Drive no la da (sin acceso), un rótulo. */
+function MiniaturaDrive({ id, pdf, pagina, className }: { id: string; pdf: boolean; pagina: number; className: string }) {
+  const [falla, setFalla] = useState(false);
+  if (falla || pdf) {
+    return (
+      <span title="Archivada en Drive" className={`flex ${className} items-center justify-center rounded-md border border-control bg-surface-2 text-[10px] font-bold text-ink-2`}>
+        {pdf ? `PDF${pagina > 1 ? ` ${pagina}` : ""}` : "Drive"}
+      </span>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- miniatura de Drive: no pasa por el optimizador
+    <img
+      src={`https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w160`}
+      alt="Comprobante (en Drive)"
+      title="Archivada en Drive"
+      referrerPolicy="no-referrer"
+      onError={() => setFalla(true)}
+      className={`${className} rounded-md border border-control object-cover`}
+    />
+  );
+}
+
+/** La imagen archivada, para abrirla aparte o verla dentro de la app. */
+export const enlaceDrive = (id: string) => `https://drive.google.com/file/d/${encodeURIComponent(id)}/view`;
+export const vistaDrive = (id: string) => `https://drive.google.com/file/d/${encodeURIComponent(id)}/preview`;

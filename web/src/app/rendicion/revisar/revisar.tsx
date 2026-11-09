@@ -14,7 +14,7 @@ import type { Archivo, Catalogos, Comprobante } from "@/lib/tipos";
 import { IconoCheck, IconoGirar } from "../../iconos";
 import { ConSesion } from "../../marco";
 import { Aviso, Estado, botonPrincipal, botonSecundario, campo } from "../../piezas";
-import { Lista, Texto, useEnlaces } from "../celdas";
+import { Lista, Texto, enlaceDrive, useEnlaces, vistaDrive } from "../celdas";
 import { useRendicion } from "../vista";
 
 export function VistaRevisar() {
@@ -258,13 +258,15 @@ function Visor({ archivo, archivos, pagina }: { archivo: Archivo | undefined; ar
   const [giro, setGiro] = useState(0);
   const enlace = archivo ? enlaces[archivo.id] : undefined;
   const pdf = archivo?.tipo_mime === "application/pdf";
+  // Ya archivada en Drive: se ve con el visor de Drive (pide estar dentro con una cuenta que tenga acceso).
+  const enDrive = archivo && !archivo.ruta && archivo.drive_id ? archivo.drive_id : null;
   const boton = "flex h-9 w-9 items-center justify-center rounded-lg border border-white/30 text-on-fill hover:bg-white/10 disabled:bg-disabled disabled:text-disabled-ink";
 
   return (
     <section aria-label="Imagen del comprobante" className="flex min-h-[55dvh] flex-col overflow-hidden rounded-card bg-[#3a4654] lg:min-h-0">
       <div className="flex items-center gap-2 px-3 py-2 text-[13px] text-on-fill">
         <span>{!archivo ? "Cargado a mano, sin imagen" : pdf ? `PDF · página ${pagina}` : "Foto"}</span>
-        {archivo && !pdf && (
+        {archivo && !pdf && !enDrive && (
           <span className="ml-auto flex gap-1.5">
             <button type="button" aria-label="Alejar" className={boton} onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))} disabled={zoom <= 0.5}>
               −
@@ -277,6 +279,11 @@ function Visor({ archivo, archivos, pagina }: { archivo: Archivo | undefined; ar
             </button>
           </span>
         )}
+        {enDrive && (
+          <a href={enlaceDrive(enDrive)} target="_blank" rel="noreferrer" className="ml-auto text-on-fill underline">
+            Abrir en Drive
+          </a>
+        )}
         {enlace && (
           <a href={pdf ? `${enlace}#page=${pagina}` : enlace} target="_blank" rel="noreferrer" className={`text-on-fill underline ${pdf ? "ml-auto" : ""}`}>
             Abrir aparte
@@ -286,6 +293,8 @@ function Visor({ archivo, archivos, pagina }: { archivo: Archivo | undefined; ar
       <div className="flex flex-1 items-start justify-center overflow-auto p-3">
         {!archivo ? (
           <p className="m-auto text-sm text-on-fill/80">Este comprobante se escribió a mano.</p>
+        ) : enDrive ? (
+          <iframe title="Comprobante archivado en Drive" src={vistaDrive(enDrive)} className="h-full min-h-[50dvh] w-full rounded-lg bg-white" />
         ) : !enlace ? (
           <span className="m-auto h-2/3 w-1/2 animate-pulse rounded-lg bg-white/10" />
         ) : pdf ? (
