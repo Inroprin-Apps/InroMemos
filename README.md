@@ -1,4 +1,4 @@
-# InroScan
+# INROMEMOS
 
 La app de INROPRIN (Roland Print) para **memorandums** de todas las empresas y
 áreas, y **rendiciones** de caja chica y memos de viáticos. Se captura el comprobante (foto o PDF, desde el teléfono o la

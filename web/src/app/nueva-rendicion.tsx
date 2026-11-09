@@ -134,7 +134,7 @@ function FormularioMemo({
   const empresa = empresaElegida ?? (empresas.length === 1 ? empresas[0].id : null);
 
   // Las entregas de viáticos de la plataforma que me toca rendir: las mías y
-  // las de mi gente sin cuenta en InroScan (si emití el memo o soy su jefatura).
+  // las de mi gente sin cuenta en INROMEMOS (si emití el memo o soy su jefatura).
   const [dni, setDni] = useState<string | null | undefined>(undefined);
   const [nuevoDni, setNuevoDni] = useState("");
   const [paraRendir, setParaRendir] = useState<MemoParaRendir[]>([]);
@@ -207,7 +207,7 @@ function FormularioMemo({
                   {m.a_nombre_de_otro ? ` a nombre de ${m.beneficiario || m.beneficiario_doc}` : ""}
                 </b>
                 <span className="block truncate text-[12px] text-ink-2">
-                  {[periodoViaje(m.viaje_desde, m.viaje_hasta), m.a_nombre_de_otro ? "no tiene cuenta en InroScan: rindes tú con sus comprobantes" : m.asunto]
+                  {[periodoViaje(m.viaje_desde, m.viaje_hasta), m.a_nombre_de_otro ? "no tiene cuenta en INROMEMOS: rindes tú con sus comprobantes" : m.asunto]
                     .filter(Boolean)
                     .join(" · ")}
                 </span>

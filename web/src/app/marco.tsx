@@ -70,7 +70,7 @@ export function ConSesion({
     return (
       <main className="flex flex-1 items-center justify-center p-6">
         <p className="text-ink-3" role="status">
-          Abriendo InroScan…
+          Abriendo INROMEMOS…
         </p>
       </main>
     );
@@ -157,11 +157,11 @@ const enlace = (activo: boolean) =>
 
 const grupo = "mb-1 px-2.5 text-[11px] font-bold uppercase tracking-[0.07em] text-ink-3";
 
-/** INRO en tinta y SCAN en azul fuerte, como INRO·CONTA. */
+/** INRO en tinta y MEMOS en azul fuerte, como INRO·CONTA. */
 export function Marca({ className = "text-[15px]" }: { className?: string }) {
   return (
     <span className={`font-bold text-ink ${className}`}>
-      INRO<span className="text-primary-strong">SCAN</span>
+      INRO<span className="text-primary-strong">MEMOS</span>
     </span>
   );
 }
@@ -211,7 +211,7 @@ function BarraLateral({
         aria-label="Navegación principal"
         className="sticky top-0 hidden h-dvh w-16 shrink-0 flex-col items-center gap-2 border-r border-line bg-surface py-4 md:flex"
       >
-        <Link href="/" aria-label="InroScan, inicio" className="mb-2">
+        <Link href="/" aria-label="INROMEMOS, inicio" className="mb-2">
           <Image src={ruta("inroprin-marca.svg")} alt="" width={28} height={28} />
         </Link>
         <Link href="/memos/" aria-label="Panel de memos" title="Panel de memos" className={`${enlace(activo === "memos")} h-11 w-11 justify-center px-0`}>
@@ -483,7 +483,7 @@ function Ingreso({ aviso }: { aviso: string | null }) {
     <main className="flex flex-1 items-center justify-center p-4 sm:p-6">
       <section className="w-full max-w-md rounded-card border border-control bg-surface p-6 sm:p-8">
         <Image src={ruta("inroprin.svg")} alt="INROPRIN" width={183} height={41} priority />
-        <h1 className="mt-6 text-2xl font-bold text-ink">InroScan</h1>
+        <h1 className="mt-6 text-2xl font-bold text-ink">INROMEMOS</h1>
         <p className="mt-2 text-ink-2">Rendiciones de caja chica y memos de viáticos.</p>
 
         {(aviso || falla) && (

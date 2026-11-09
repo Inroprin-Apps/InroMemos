@@ -389,7 +389,7 @@ function LineasEditables({
       {memo.tipo_codigo === ENTREGA_VIATICOS && (
         <p className="mb-3 rounded-row bg-primary-soft px-3 py-2 text-[13px] text-primary-strong">
           Una línea por persona que viaja, con las fechas del viaje. Los comprobantes no van acá: después del viaje se escanean en{" "}
-          <b>Mis rendiciones</b>. Si la persona no tiene cuenta en InroScan, rinde quien emite este memo.
+          <b>Mis rendiciones</b>. Si la persona no tiene cuenta en INROMEMOS, rinde quien emite este memo.
         </p>
       )}
       <div className="space-y-3">

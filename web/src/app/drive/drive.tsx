@@ -14,7 +14,7 @@ export function Drive() {
     <PaginaAdmin
       activo="drive"
       titulo="Drive"
-      descripcion="Al enviar, cada versión deja su hoja y su PDF en la carpeta madre, con las imágenes; al aprobar, las imágenes se borran de InroScan solo después de verificar la copia."
+      descripcion="Al enviar, cada versión deja su hoja y su PDF en la carpeta madre, con las imágenes; al aprobar, las imágenes se borran de INROMEMOS solo después de verificar la copia."
     >
       {() => <Contenido />}
     </PaginaAdmin>

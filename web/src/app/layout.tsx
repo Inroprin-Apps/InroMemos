@@ -8,11 +8,11 @@ import { RegistroSW } from "./registro-sw";
 const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
 
 export const metadata: Metadata = {
-  title: "InroScan",
+  title: "INROMEMOS",
   description: "Rendiciones de caja chica y memos de viáticos de INROPRIN.",
   icons: { icon: ruta("inroprin-marca.svg"), apple: ruta("icono-192.png") },
   manifest: ruta("manifest.webmanifest"),
-  appleWebApp: { capable: true, title: "InroScan", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "INROMEMOS", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = { themeColor: "#006db1" };

@@ -1,4 +1,4 @@
-# InroScan — contexto del proyecto
+# INROMEMOS — contexto del proyecto
 
 > Documento de traspaso: para que cualquier persona, o cualquier asistente en
 > otra sesión, pueda retomar el proyecto sin reconstruir la conversación que lo
@@ -27,12 +27,12 @@ COMPROBANTE, PROVEEDOR, PROYECTO, AREA DEL SOLICITANTE, SOLICITANTE, CONCEPTO,
 DESCRIPCION-MOTIVO, TOTAL INC IGV. *El formato del memo puede cambiar más
 adelante: está pendiente revisarlo.*
 
-**INRO VIÁTICOS quedó descontinuado y no es referencia.** InroScan dejó de ser
+**INRO VIÁTICOS quedó descontinuado y no es referencia.** INROMEMOS dejó de ser
 un puente temporal: es *el* sistema.
 
 ### Historia breve
 
-- **Hasta octubre de 2026** existió una primera InroScan: estática, sin base de
+- **Hasta octubre de 2026** existió una primera InroScan (el nombre anterior de esta app): estática, sin base de
   datos, leyendo en el navegador con OCR y una clave de Gemini por persona, y
   guardando en Drive y Sheets como la persona. Su código se retiró el
   26-oct-2026; está en el historial de git (último commit con ella:
