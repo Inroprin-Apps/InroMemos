@@ -146,7 +146,7 @@ function Contenido({ persona }: { persona: Persona }) {
       {(error || errorCtx) && <Aviso>{error ?? errorCtx}</Aviso>}
       {contexto && !puedeEmitir && (
         <Aviso tono="info">
-          Todavía no tienes un área para emitir memos. Ves los que te enviaron; para emitir, pide a administración que te agregue a tu área.
+          Ves los memos que te enviaron. Para pedir uno, usa «Solicitar memo»: le llega a la jefatura del área y el área lo emite.
         </Aviso>
       )}
 

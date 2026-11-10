@@ -155,7 +155,7 @@ select pruebas.ok((select count(*) >= 1 from avisos where tipo = 'observado' and
 select pruebas.ok((select count(*) >= 1 from avisos where tipo = 'recibido'), 'al dar cargo, el emisor se entera');
 
 alter table memos disable trigger memo_al_guardar;
-update memos set actualizado_en = now() - interval '5 hours' where id = :'v2';
+update memos set actualizado_en = '2026-11-10 10:00:00+00' where id = :'v2';  -- 5 h antes del reloj de la prueba
 alter table memos enable trigger memo_al_guardar;
 delete from avisos where memo_id = :'v2';
 select pruebas.ok(encolar_recordatorios('2026-11-10 15:00:00+00') >= 1, 'un martes a las 10:00 se recuerda lo que espera aprobación');
@@ -244,6 +244,48 @@ insert into auditorias (auditor, nivel, resumen, hallazgos) values ('Agente exte
 select pruebas.como('carla@inroprin.com');
 select pruebas.ok((select k -> 'auditoria' ->> 'nivel' = 'observaciones' and (k -> 'auditoria' ->> 'hallazgos')::int = 2
                      from kpis_memos('2020-01-01', '2100-12-31') k), 'el último informe de la auditoría externa aparece en los KPIs');
+
+\echo '\n· Solicitar un memo'
+
+reset role; select pruebas.como('dora@inroprin.com');
+insert into solicitudes_memo (unidad_id, tipo_codigo, que, monto, beneficiario, beneficiario_doc, viaje_desde, viaje_hasta, origen)
+values (:finanzas, 'RR-EVI', 'Viáticos para la instalación en Puno', 500, 'Dora Destino', '45678913', '2026-11-12', '2026-11-15', 'rendiciones')
+returning id as sol \gset
+select pruebas.ok((select estado = 'pendiente' and solicitante_nombre <> '' from solicitudes_memo where id = :'sol'),
+  'cualquier persona pide un memo a un área: queda pendiente y a su nombre');
+select pruebas.falla(format($$update solicitudes_memo set estado = 'aceptada' where id = %L$$, :'sol'), 'nadie cambia una solicitud a mano');
+select pruebas.falla(format($$select atender_solicitud(%L)$$, :'sol'), 'quien no emite en esa área no la atiende');
+
+reset role; select pruebas.como('rita@inroprin.com');
+select pruebas.ok((select count(*) from solicitudes_memo where id = :'sol') = 0, 'otra área no ve la solicitud');
+
+reset role; select pruebas.como('emi@inroprin.com');
+select pruebas.ok((select count(*) from solicitudes_memo where id = :'sol') = 1, 'quien emite en el área la ve');
+select pruebas.falla(format($$select rechazar_solicitud(%L, 'No corresponde')$$, :'sol'), 'rechazar es de la jefatura');
+select atender_solicitud(:'sol') as memo_sol \gset
+select pruebas.ok((select estado = 'borrador' and unidad_id = :finanzas and tipo_codigo = 'RR-EVI' and emisor_id = :'emi'
+                          and 'dora@inroprin.com' = any (copias)
+                     from memos where id = :'memo_sol'),
+  'atenderla crea el borrador en el área, a nombre de quien la atiende, con quien la pidió en copia');
+select pruebas.ok((select monto = 500 and beneficiario_doc = '45678913' and viaje_desde = '2026-11-12'
+                     from lineas_pago where memo_id = :'memo_sol'),
+  'y con la línea de pago ya hecha (monto, persona y fechas del viaje)');
+select pruebas.ok((select estado = 'aceptada' and memo_id = :'memo_sol' from solicitudes_memo where id = :'sol'),
+  'la solicitud queda aceptada y enlazada a su memo');
+select pruebas.falla(format($$select atender_solicitud(%L)$$, :'sol'), 'no se atiende dos veces');
+
+reset role; select pruebas.como('dora@inroprin.com');
+insert into solicitudes_memo (unidad_id, que) values (:finanzas, 'Un comunicado sobre el horario') returning id as sol2 \gset
+insert into solicitudes_memo (unidad_id, que) values (:finanzas, 'Otra cosa que ya no hace falta') returning id as sol3 \gset
+select cancelar_solicitud(:'sol3');
+select pruebas.ok((select estado = 'cancelada' from solicitudes_memo where id = :'sol3'), 'quien la pidió la cancela mientras esté pendiente');
+
+reset role; select pruebas.como('jefa@inroprin.com');
+select pruebas.falla(format($$select rechazar_solicitud(%L, 'no')$$, :'sol2'), 'rechazar exige decir por qué');
+select rechazar_solicitud(:'sol2', 'Eso va por comunicado general de RRHH');
+select pruebas.ok((select estado = 'rechazada' and motivo_rechazo like 'Eso va%' from solicitudes_memo where id = :'sol2'),
+  'la jefatura la rechaza con su motivo');
+select pruebas.falla(format($$select rechazar_solicitud(%L, 'Ya no corresponde')$$, :'sol3'), 'una cancelada ya no se rechaza');
 
 reset role;
 \echo '\nCiclo en orden\n'

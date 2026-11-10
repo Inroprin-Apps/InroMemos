@@ -46,7 +46,7 @@ function Contenido({ persona }: { persona: Persona }) {
     return (
       <div className="space-y-4">
         <Encabezado titulo="Emitir memo" />
-        <Aviso tono="info">Todavía no tienes un área para emitir memos. Pide a administración que te agregue a la tuya.</Aviso>
+        <Aviso tono="info">Emiten memos quienes están en un área. Si necesitas uno, usa «Solicitar memo» en el menú: le llega a la jefatura del área y el área lo emite.</Aviso>
       </div>
     );
   }
