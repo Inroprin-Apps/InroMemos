@@ -12,6 +12,7 @@ import { cuentas } from "@/lib/cuentas";
 import { useBarraContraida } from "@/lib/preferencias";
 import { espera, useContextoMemos, useMemos } from "@/lib/memos";
 import { EN_CURSO, tituloRendicion, useRendiciones } from "@/lib/rendiciones";
+import { useSolicitudes } from "@/lib/solicitudes";
 import { entrar, salir, useSesion, type Persona } from "@/lib/sesion";
 import {
   IconoAjustes,
@@ -19,6 +20,7 @@ import {
   IconoCheck,
   IconoCaja,
   IconoDerecha,
+  IconoEnviar,
   IconoInicio,
   IconoIzquierda,
   IconoLista,
@@ -32,6 +34,7 @@ import {
   IconoSubir,
 } from "./iconos";
 import { NuevaRendicion } from "./nueva-rendicion";
+import { Solicitar } from "./solicitar";
 import { Valorar } from "./valorar";
 import { Aviso, botonPrincipal } from "./piezas";
 
@@ -49,6 +52,7 @@ export type Activo =
   | "personas"
   | "reportes"
   | "drive"
+  | "solicitudes"
   | (string & {});
 
 /** Los dos módulos: se emiten memos sin rendir nada; se rinde solo lo que entregó un memo. */
@@ -139,6 +143,8 @@ function Armazon({
   const cerrarNueva = useCallback(() => setNueva(false), []);
   const [verCola, setVerCola] = useState(false);
   const cerrarCola = useCallback(() => setVerCola(false), []);
+  const [solicitar, setSolicitar] = useState<Modulo | null>(null);
+  const cerrarSolicitar = useCallback(() => setSolicitar(null), []);
   const contraida = forzarContraida || preferida;
   const modulo = moduloDe(camino);
 
@@ -168,6 +174,7 @@ function Armazon({
         onAlternar={forzarContraida ? undefined : () => setPreferida(!preferida)}
         onNueva={() => setNueva(true)}
         onCola={() => setVerCola(true)}
+        onSolicitar={setSolicitar}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <CabeceraMovil persona={persona} modulo={modulo} />
@@ -175,15 +182,18 @@ function Armazon({
           {children}
         </main>
       </div>
-      <NavInferior persona={persona} activo={activo} modulo={modulo} onNueva={() => setNueva(true)} onCola={() => setVerCola(true)} />
+      <NavInferior persona={persona} activo={activo} modulo={modulo} onNueva={() => setNueva(true)} onCola={() => setVerCola(true)} onSolicitar={setSolicitar} />
       {nueva && <NuevaRendicion persona={persona} onCerrar={cerrarNueva} />}
       {verCola && <PorSubir onCerrar={cerrarCola} />}
+      {solicitar && <Solicitar persona={persona} origen={solicitar} onCerrar={cerrarSolicitar} />}
       <Valorar />
     </div>
   );
 }
 
 type Item = { clave: Activo; texto: string; href: string; Icono: (p: { className?: string }) => ReactNode };
+/** Lo que un ítem del menú abre en vez de navegar. */
+type Accion = "nueva" | "solicitar-memo" | "solicitar-viaticos";
 
 // Administración de cada módulo, y la que comparten (personas, catálogos, Drive).
 const ADMIN_MEMOS: Item[] = [{ clave: "memos-config", texto: "Áreas y permisos", href: "/memos/configuracion/", Icono: IconoAjustes }];
@@ -242,12 +252,19 @@ function useMenu(persona: Persona, modulo: Modulo) {
   const porAtender = useMemosPorAtender(persona);
   const porRevisar = (rendiciones ?? []).filter((r) => r.estado === "enviada").length;
   const observadas = (rendiciones ?? []).filter((r) => r.responsable_id === persona.id && r.estado === "observada").length;
+  const { solicitudes } = useSolicitudes();
+  // Las que esperan a mis áreas (si emito o soy jefatura): no las mías.
+  const solicitudesPendientes = (solicitudes ?? []).filter((s) => s.estado === "pendiente" && s.solicitante_id !== persona.id).length;
+  const emite = persona.es_administracion || (permisos?.emite.length ?? 0) > 0;
 
-  const items: (Item & { n?: number; accion?: "nueva" })[] =
+  const items: (Item & { n?: number; accion?: Accion })[] =
     modulo === "memos"
       ? [
           { clave: "memos", texto: "Panel de memos", href: "/memos/", Icono: IconoMemo, n: porAtender },
-          { clave: "emitir", texto: "Emitir memo", href: "/memos/emitir/", Icono: IconoMas },
+          // Emite quien está en un área; los demás solicitan y el área emite.
+          ...(emite ? [{ clave: "emitir", texto: "Emitir memo", href: "/memos/emitir/", Icono: IconoMas }] : []),
+          { clave: "solicitar", texto: "Solicitar memo", href: "/memos/solicitudes/", Icono: IconoEnviar, accion: "solicitar-memo" as const },
+          { clave: "solicitudes", texto: "Solicitudes", href: "/memos/solicitudes/", Icono: IconoBandeja, n: solicitudesPendientes },
           ...(veKpis(persona, permisos) ? [{ clave: "kpis", texto: "Métricas y KPIs", href: "/memos/kpis/", Icono: IconoReportes }] : []),
           ...(persona.es_administracion || permisos?.verificaCuentas
             ? [{ clave: "cuentas", texto: "Cuentas por verificar", href: "/memos/cuentas/", Icono: IconoCheck }]
@@ -256,9 +273,10 @@ function useMenu(persona: Persona, modulo: Modulo) {
       : [
           { clave: "inicio", texto: "Mis rendiciones", href: "/", Icono: IconoInicio, n: observadas },
           { clave: "nueva", texto: "Nueva rendición", href: "/", Icono: IconoMas, accion: "nueva" as const },
+          { clave: "solicitar-viaticos", texto: "Solicitar viáticos", href: "/memos/solicitudes/", Icono: IconoEnviar, accion: "solicitar-viaticos" as const },
         ];
   const admin = persona.es_administracion ? (modulo === "memos" ? ADMIN_MEMOS : ADMIN_RENDICIONES) : [];
-  return { items, admin, general: persona.es_administracion ? ADMIN_GENERAL : [], porAtender, porRevisar, observadas };
+  return { items, admin, general: persona.es_administracion ? ADMIN_GENERAL : [], porAtender, porRevisar, observadas, emite };
 }
 
 /** Memorandums | Rendiciones: el interruptor de módulo, arriba de la barra. */
@@ -293,6 +311,7 @@ function BarraLateral({
   onAlternar,
   onNueva,
   onCola,
+  onSolicitar,
 }: {
   persona: Persona;
   activo?: Activo;
@@ -301,6 +320,7 @@ function BarraLateral({
   onAlternar?: () => void;
   onNueva: () => void;
   onCola: () => void;
+  onSolicitar: (origen: Modulo) => void;
 }) {
   const { rendiciones } = useRendiciones();
   const enCola = usePendientes().length;
@@ -308,9 +328,10 @@ function BarraLateral({
     (r) => r.responsable_id === persona.id && (EN_CURSO as readonly string[]).includes(r.estado),
   );
   const { items, admin, general, porAtender, porRevisar } = useMenu(persona, modulo);
-  const aIcono = (it: Item & { accion?: "nueva" }) =>
+  const accionar = (a: Accion) => (a === "nueva" ? onNueva() : onSolicitar(a === "solicitar-memo" ? "memos" : "rendiciones"));
+  const aIcono = (it: Item & { accion?: Accion }) =>
     it.accion ? (
-      <button key={it.clave} type="button" onClick={onNueva} aria-label={it.texto} title={it.texto} className={`${enlace(false)} h-11 w-11 justify-center px-0`}>
+      <button key={it.clave} type="button" onClick={() => accionar(it.accion!)} aria-label={it.texto} title={it.texto} className={`${enlace(false)} h-11 w-11 justify-center px-0`}>
         <it.Icono />
       </button>
     ) : (
@@ -372,7 +393,7 @@ function BarraLateral({
         <p className={grupo}>{modulo === "memos" ? "Memorandums" : "Rendiciones"}</p>
         {items.map((it) =>
           it.accion ? (
-            <button key={it.clave} type="button" onClick={onNueva} className={enlace(false)}>
+            <button key={it.clave} type="button" onClick={() => accionar(it.accion!)} className={enlace(false)}>
               <it.Icono className="h-4.25 w-4.25" />
               {it.texto}
             </button>
@@ -524,15 +545,17 @@ function NavInferior({
   modulo,
   onNueva,
   onCola,
+  onSolicitar,
 }: {
   persona: Persona;
   activo?: Activo;
   modulo: Modulo;
   onNueva: () => void;
   onCola: () => void;
+  onSolicitar: (origen: Modulo) => void;
 }) {
   const enCola = usePendientes().length;
-  const { porAtender } = useMenu(persona, modulo);
+  const { porAtender, emite } = useMenu(persona, modulo);
   const item = (on: boolean) =>
     `flex min-w-16 flex-col items-center gap-0.5 text-[11px] font-semibold transition-colors duration-150 ${on ? "text-primary-strong" : "text-ink-2"}`;
   return (
@@ -553,9 +576,20 @@ function NavInferior({
             </span>
             Panel
           </Link>
-          <Link href="/memos/emitir/" className={item(activo === "emitir")}>
-            <IconoMas className="h-5.5 w-5.5" />
-            Emitir
+          {emite ? (
+            <Link href="/memos/emitir/" className={item(activo === "emitir")}>
+              <IconoMas className="h-5.5 w-5.5" />
+              Emitir
+            </Link>
+          ) : (
+            <button type="button" onClick={() => onSolicitar("memos")} className={item(false)}>
+              <IconoEnviar className="h-5.5 w-5.5" />
+              Solicitar
+            </button>
+          )}
+          <Link href="/memos/solicitudes/" className={item(activo === "solicitudes")}>
+            <IconoBandeja className="h-5.5 w-5.5" />
+            Solicitudes
           </Link>
         </>
       ) : (

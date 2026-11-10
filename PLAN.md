@@ -141,6 +141,13 @@ Quedó abierto en la prueba:
 - **KPIs para las jefaturas** (cada una ve sus áreas; administración y «Ver KPIs», todas): calidad de respuesta, tiempos de ejecución (incluidos los avisos por correo), **acogida** (después de cada acción la app pregunta «¿cómo te fue?» con cinco caritas: tabla `valoraciones`) y **auditoría externa** (tabla `auditorias`, la escribe solo el sistema).
 - **Pendiente:** programar el agente externo que audite (p. ej. una vez al mes: correlativos sin saltos, memos aprobados con PDF en Drive, correos conciliados, estados de InroPay contra la base) y deje su informe en `auditorias`.
 
+## 5c. Solicitar un memo (10-nov-2026)
+
+- **Cualquier persona** pide un memo a un área (*Memorandums › Solicitar memo*, o *Rendiciones › Solicitar viáticos*): qué necesita, tipo, monto, beneficiario y, si son viáticos, las fechas.
+- Llega a la **jefatura y a quienes emiten** en esa área (*Solicitudes*, con contador). Quien emite (o la jefatura) la **atiende** y nace el borrador ya llenado, con quien la pidió en copia; la **jefatura** puede **rechazarla** con su motivo. Quien la pidió la sigue en *Mías* y la puede cancelar mientras esté pendiente.
+- **Control de ingreso:** «Emitir memo» aparece solo a quien está en un área; los demás solicitan. Toda emisión sigue pasando por la aprobación de la jefatura.
+- **Pendiente:** aviso por correo de cada solicitud nueva a la jefatura (hoy el aviso está en la app).
+
 ## 6. Lo que sigue
 
 | # | Qué | Depende de |
