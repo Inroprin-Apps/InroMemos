@@ -20,11 +20,11 @@ import {
   type Memo,
 } from "@/lib/memos";
 import type { Persona } from "@/lib/sesion";
-import { IconoBajar, IconoBuscar, IconoCarpeta, IconoMas, IconoOjo, IconoPulso, IconoReloj, IconoSincronizar } from "../iconos";
+import { IconoBajar, IconoBuscar, IconoCarpeta, IconoMas, IconoPulso, IconoReloj, IconoSincronizar } from "../iconos";
 import { ConSesion, marcarPestanaPanel } from "../marco";
 import { Aviso, botonPrincipal, botonSecundario, campoSuelto, Etiqueta } from "../piezas";
 import { PanelLateral } from "./panel-lateral";
-import { ChipEstado, ChipPago, ChipPropuesta, Encabezado, TeToca } from "./piezas-memo";
+import { ChipEstado, ChipPago, ChipPropuesta, Encabezado } from "./piezas-memo";
 import { PanelSalud } from "./salud";
 
 export function PanelMemos() {
@@ -188,6 +188,7 @@ function Contenido({ persona }: { persona: Persona }) {
   const [pagina, setPagina] = useState(0);
   const [abierto, setAbierto] = useState<string | null>(null);
   const [salud, setSalud] = useState(false);
+  const [porConfirmar, setPorConfirmar] = useState<Memo | null>(null);
   const [sincronizando, setSincronizando] = useState(false);
   const [falla, setFalla] = useState<string | null>(null);
   const [ahora, setAhora] = useState(() => Date.now());
@@ -263,6 +264,7 @@ function Contenido({ persona }: { persona: Persona }) {
   const puedeEmitir = (contexto?.permisos.emite.length ?? 0) > 0 || persona.es_administracion;
   const cerrarPanel = useCallback(() => setAbierto(null), []);
   const cerrarSalud = useCallback(() => setSalud(false), []);
+  const cerrarConfirmar = useCallback(() => setPorConfirmar(null), []);
   // ↑ ↓ en el panel lateral: el memo anterior o el siguiente de la lista filtrada.
   const mover = (paso: -1 | 1) => {
     const i = lista.findIndex((m) => m.id === abierto);
@@ -530,8 +532,9 @@ function Contenido({ persona }: { persona: Persona }) {
                       contexto={contexto}
                       abierto={abierto === m.id}
                       vencido={vencido(m, metaHoras, ahora)}
+                      ahora={ahora}
                       onAbrir={() => setAbierto(m.id)}
-                      onAprobar={() => aprobarYa(m)}
+                      onAprobar={() => setPorConfirmar(m)}
                     />
                   ))}
                 </Fragment>
@@ -571,17 +574,32 @@ function Contenido({ persona }: { persona: Persona }) {
         <PanelLateral resumen={lista.find((m) => m.id === abierto)!} contexto={contexto} onCerrar={cerrarPanel} onMover={(paso) => mover(paso)} />
       )}
       {salud && <PanelSalud contexto={contexto} onCerrar={cerrarSalud} />}
+      {porConfirmar && <ConfirmarAprobacion m={porConfirmar} onAprobar={() => aprobarYa(porConfirmar)} onCerrar={cerrarConfirmar} />}
     </div>
   );
 }
 
-/** Una fila del panel: borde ámbar si espera aprobación, rojo si pasó la meta. */
+/** «5 h», «2 d»: cuánto lleva esperando. */
+function espera_(desde: string | null, ahora: number): string | null {
+  if (!desde) return null;
+  const h = (ahora - Date.parse(desde)) / HORA;
+  if (!(h >= 0)) return null;
+  return h < 1 ? `${Math.max(1, Math.round(h * 60))} min` : h < 24 ? `${Math.round(h)} h` : `${Math.floor(h / 24)} d`;
+}
+
+/**
+ * Una fila del panel. Estado: una pastilla y una línea gris; el rojo solo
+ * para «fuera de meta». Lo que te toca es un botón a la derecha (Aprobar,
+ * Dar cargo, Corregir); al lado, el legajo y el PDF. El resumen se abre con
+ * un clic en la fila.
+ */
 function Fila({
   m,
   persona,
   contexto,
   abierto,
   vencido,
+  ahora,
   onAbrir,
   onAprobar,
 }: {
@@ -590,35 +608,45 @@ function Fila({
   contexto: Contexto | null;
   abierto: boolean;
   vencido: boolean;
+  ahora: number;
   onAbrir: () => void;
-  onAprobar: () => Promise<void>;
+  onAprobar: () => void;
 }) {
-  const [aprobando, setAprobando] = useState(false);
   const u = contexto?.catalogos.unidades.find((x) => x.id === m.unidad_id);
   const t = contexto?.catalogos.tipos.find((x) => x.codigo === m.tipo_codigo);
   const mia = espera(m, persona, contexto?.permisos ?? null);
   // Borde fino: ámbar si espera aprobación, rojo si pasó la meta (como Franco, más discreto).
   const borde = abierto ? "border-l-primary bg-primary-soft/40" : vencido ? "border-l-danger/70" : m.estado === "pendiente" ? "border-l-warning-strong/50" : "border-l-transparent";
-  const ciclo = proximoCiclo(new Date());
+  const ciclo = proximoCiclo(new Date(ahora));
   const corte = ciclo.corte.toLocaleDateString("es-PE", { weekday: "short", day: "numeric", timeZone: "America/Lima" });
 
+  // La línea gris bajo el estado: qué espera y desde cuándo.
+  const lleva =
+    m.estado === "pendiente" ? espera_(m.actualizado_en, ahora) : m.estado === "aprobado" || m.estado === "enviado" ? espera_(m.enviado_en ?? m.aprobado_en, ahora) : null;
   const nota =
     m.estado === "pendiente"
-      ? "Aún sin aprobar"
+      ? "Espera aprobación"
       : m.estado === "observado"
-        ? "Vuelve a quien lo emitió"
+        ? m.ultima_observacion
+          ? `«${m.ultima_observacion}»`
+          : "Vuelve a quien lo emitió"
         : m.estado === "aprobado" || m.estado === "enviado"
           ? "Espera el cargo"
           : m.estado === "recibido" && m.recibido_en
             ? `Cargo ${cuando(m.recibido_en)}`
             : null;
 
-  const accionBoton = "flex h-8 w-8 items-center justify-center rounded-row border border-control text-ink-2 hover:bg-surface-2 hover:text-ink";
+  const icono = "flex h-8 w-8 items-center justify-center rounded-[9px] text-ink-3 hover:bg-surface-2 hover:text-ink";
+  // Botón chico de fila (el mediano de INROCONTA, un punto más compacto).
+  const boton = "inline-flex items-center justify-center whitespace-nowrap rounded-[9px] px-3 py-1.5 text-[12.5px] font-semibold transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+  const lleno = "bg-primary text-on-fill hover:bg-primary-hover active:bg-primary-active";
+  const borde_ = "border border-control bg-surface text-ink hover:bg-surface-2 active:bg-surface-3";
 
   return (
     <tr
       tabIndex={0}
       aria-selected={abierto}
+      title="Ver el resumen"
       onClick={onAbrir}
       onKeyDown={(e) => e.key === "Enter" && e.target === e.currentTarget && onAbrir()}
       className={`block cursor-pointer border-b border-l-2 border-b-line px-5 py-3 outline-none transition-colors duration-150 last:border-b-0 hover:bg-surface-2 focus-visible:bg-surface-2 md:table-row md:p-0 ${borde}`}
@@ -643,11 +671,13 @@ function Fila({
         {m.requiere_pago ? <span className="font-semibold text-ink">{dinero(m.total, m.moneda)}</span> : <span className="text-ink-3">Sin pago</span>}
       </td>
       <td className="block pt-1.5 md:table-cell md:py-3 md:pr-3 md:align-top">
-        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <ChipEstado estado={m.estado} />
-          {mia && <TeToca que={mia} />}
-        </span>
-        {nota && <span className={`mt-1 block text-[11.5px] ${vencido ? "text-danger-strong" : "text-ink-3"}`}>{vencido ? `${nota} · fuera de meta` : nota}</span>}
+        <ChipEstado estado={m.estado} />
+        {nota && (
+          <span className="mt-1 block max-w-60 truncate text-[11.5px] text-ink-3">
+            {nota}
+            {lleva && (vencido ? <span className="font-semibold text-danger-strong"> · {lleva}, fuera de meta</span> : ` · hace ${lleva}`)}
+          </span>
+        )}
       </td>
       <td className="block pt-1 md:table-cell md:py-3 md:pr-3 md:align-top">
         {!m.requiere_pago ? (
@@ -661,45 +691,105 @@ function Fila({
         )}
       </td>
       <td className="block pt-2 md:table-cell md:py-3 md:pr-4 md:align-top" onClick={(e) => e.stopPropagation()}>
-        {/* Teléfono: actuar sin entrar al memo, como la bandeja de Franco. */}
-        {mia && (
-          <span className="flex gap-2 md:hidden">
-            {mia === "aprobar" && (
-              <button
-                type="button"
-                disabled={aprobando}
-                onClick={async () => {
-                  setAprobando(true);
-                  await onAprobar();
-                  setAprobando(false);
-                }}
-                className={`flex-1 text-[13px] ${botonPrincipal}`}
-              >
-                {aprobando ? "Aprobando…" : "Aprobar"}
-              </button>
-            )}
-            <Link href={`/memos/memo/?id=${m.id}`} className={`flex-1 text-center text-[13px] ${mia === "aprobar" ? botonSecundario : botonPrincipal}`}>
-              {mia === "aprobar" ? "Observar" : mia === "cargo" ? "Dar cargo" : "Corregir"}
+        <span className="flex items-center gap-1 md:justify-end">
+          {/* Lo que te toca, como botón: se hace desde aquí. */}
+          {mia === "aprobar" && (
+            <button type="button" onClick={onAprobar} className={`${boton} ${lleno}`}>
+              Aprobar
+            </button>
+          )}
+          {mia === "cargo" && (
+            <Link href={`/memos/memo/?id=${m.id}`} className={`${boton} ${lleno}`}>
+              Dar cargo
             </Link>
-          </span>
-        )}
-        <span className="hidden justify-end gap-1.5 md:flex">
-          <button type="button" onClick={onAbrir} aria-label="Ver el resumen" title="Ver el resumen" className={accionBoton}>
-            <IconoOjo className="h-4 w-4" />
-          </button>
+          )}
+          {mia === "corregir" && (
+            <Link href={`/memos/memo/?id=${m.id}`} className={`${boton} ${borde_}`}>
+              Corregir
+            </Link>
+          )}
           {m.drive_carpeta_id && (
-            <a href={drive(m.drive_carpeta_id, true)} target="_blank" rel="noreferrer" aria-label="Abrir el legajo en Drive" title="Legajo en Drive" className={accionBoton}>
+            <a href={drive(m.drive_carpeta_id, true)} target="_blank" rel="noreferrer" aria-label="Abrir el legajo en Drive" title="Legajo en Drive" className={icono}>
               <IconoCarpeta className="h-4 w-4" />
             </a>
           )}
           {m.pdf_drive_id && (
-            <a href={drive(m.pdf_drive_id)} target="_blank" rel="noreferrer" aria-label="Abrir el PDF" title="PDF" className={accionBoton}>
+            <a href={drive(m.pdf_drive_id)} target="_blank" rel="noreferrer" aria-label="Descargar el PDF" title="PDF" className={icono}>
               <IconoBajar className="h-4 w-4" />
             </a>
           )}
         </span>
       </td>
     </tr>
+  );
+}
+
+/** Antes de aprobar desde la lista: el número, el monto y el asunto, para no aprobar a ciegas. */
+function ConfirmarAprobacion({ m, onAprobar, onCerrar }: { m: Memo; onAprobar: () => Promise<void>; onCerrar: () => void }) {
+  const [aprobando, setAprobando] = useState(false);
+  useEffect(() => {
+    const tecla = (e: KeyboardEvent) => e.key === "Escape" && onCerrar();
+    window.addEventListener("keydown", tecla);
+    return () => window.removeEventListener("keydown", tecla);
+  }, [onCerrar]);
+  return (
+    <div className="animar-velo fixed inset-0 z-40 flex items-end justify-center bg-ink/40 sm:items-center sm:p-4" onClick={onCerrar}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="aprobar-titulo"
+        className="animar-dialogo w-full max-w-md rounded-t-card bg-surface p-5 shadow-card sm:rounded-card sm:p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id="aprobar-titulo" className="text-lg font-bold text-ink">
+          ¿Aprobar {m.numero_visible}?
+        </h2>
+        <dl className="mt-3 space-y-1.5 text-[13.5px]">
+          <div className="flex gap-3">
+            <dt className="w-20 shrink-0 text-ink-3">Asunto</dt>
+            <dd className="min-w-0 font-semibold text-ink">{m.asunto || "Sin asunto"}</dd>
+          </div>
+          {m.requiere_pago && (
+            <div className="flex gap-3">
+              <dt className="w-20 shrink-0 text-ink-3">Monto</dt>
+              <dd className="font-semibold tabular-nums text-ink">{dinero(m.total, m.moneda)}</dd>
+            </div>
+          )}
+          <div className="flex gap-3">
+            <dt className="w-20 shrink-0 text-ink-3">Emisor</dt>
+            <dd className="text-ink">{m.emisor_nombre}</dd>
+          </div>
+          <div className="flex gap-3">
+            <dt className="w-20 shrink-0 text-ink-3">Para</dt>
+            <dd className="text-ink">{m.destinatario_nombre || m.destinatario_correo || "—"}</dd>
+          </div>
+        </dl>
+        <p className="mt-3 text-[12.5px] text-ink-2">
+          Se sella y se envía al destinatario. Si quieres revisar las líneas o los sustentos antes,{" "}
+          <Link href={`/memos/memo/?id=${m.id}`} className="font-semibold text-primary hover:underline">
+            abre el memo
+          </Link>
+          ; ahí también puedes observarlo.
+        </p>
+        <div className="mt-5 flex gap-2">
+          <button
+            type="button"
+            disabled={aprobando}
+            onClick={async () => {
+              setAprobando(true);
+              await onAprobar();
+              onCerrar();
+            }}
+            className={`flex-1 ${botonPrincipal}`}
+          >
+            {aprobando ? "Aprobando…" : "Aprobar"}
+          </button>
+          <button type="button" onClick={onCerrar} className={botonSecundario}>
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
