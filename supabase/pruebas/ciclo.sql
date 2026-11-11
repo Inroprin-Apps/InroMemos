@@ -248,6 +248,12 @@ select pruebas.ok((select k -> 'auditoria' ->> 'nivel' = 'observaciones' and (k 
 \echo '\n· Solicitar un memo'
 
 reset role; select pruebas.como('dora@inroprin.com');
+select pruebas.falla(format($$insert into solicitudes_memo (unidad_id, que, origen) values (%s, 'Un comunicado general', 'memos')$$, :finanzas),
+  'con «Solicitar memo» apagado (así viene), no se piden memos desde Memorandums');
+reset role; select pruebas.como('carla@inroprin.com');
+update parametros_memo set solicitar_memo = true;
+
+reset role; select pruebas.como('dora@inroprin.com');
 insert into solicitudes_memo (unidad_id, tipo_codigo, que, monto, beneficiario, beneficiario_doc, viaje_desde, viaje_hasta, origen)
 values (:finanzas, 'RR-EVI', 'Viáticos para la instalación en Puno', 500, 'Dora Destino', '45678913', '2026-11-12', '2026-11-15', 'rendiciones')
 returning id as sol \gset
@@ -357,6 +363,38 @@ select pruebas.ok((select count(*) = 0 from cola_inropay where memo_id = :'pj2')
 select pruebas.ok((select count(*) >= 1 from avisos where memo_id = :'pj2' and tipo = 'observado' and para = '{jefa@inroprin.com}'),
   'quien lo emitió recibe el aviso');
 select pruebas.ok((select estado = 'aprobado' from memos where id = :'pj'), 'los memos con la cuenta buena no se tocan');
+
+\echo '\n· Funciones activables'
+
+reset role; select pruebas.como('emi@inroprin.com');
+update parametros_memo set segundo_control_pagos = false;
+reset role;
+select pruebas.ok((select segundo_control_pagos from parametros_memo), 'solo administración apaga una función: quien emite no la cambia');
+select pruebas.ok((select propuesto_inromemos from tipos_memo where codigo = 'RR-EVI')
+               and (select count(*) = 1 from tipos_memo where propuesto_inromemos),
+  'la entrega de viáticos queda marcada como propuesta de INROMEMOS (la única)');
+
+reset role; select pruebas.como('carla@inroprin.com');
+update parametros_memo set segundo_control_pagos = false;
+reset role; select pruebas.como('jefa@inroprin.com');
+insert into memos (unidad_id, tipo_codigo, asunto, cuerpo, destinatario_correo)
+values (:finanzas, 'RR-VIA', 'Pago con el control apagado', 'Texto', 'dora@inroprin.com') returning id as pj3 \gset
+insert into lineas_pago (memo_id, empresa_pagadora_id, beneficiario_doc, beneficiario, concepto_id, monto)
+values (:'pj3', :inroprin, '45678913', 'Dora Destino', :concepto, 70);
+select emitir_memo(:'pj3');
+select pruebas.ok((select estado = 'aprobado' from memos where id = :'pj3'),
+  'con el segundo control apagado, el pago de la jefa sale aprobado como en el diseño original');
+
+reset role; select pruebas.como_sistema();
+update lineas_pago set estado_cuenta = 'distinta' where memo_id = :'pj3';
+select pruebas.ok((select count(*) = 0 from cola_inropay where memo_id = :'pj3'), 'con la cuenta distinta no pasa a pagos');
+reset role; select pruebas.como('carla@inroprin.com');
+update parametros_memo set cuenta_verificada_para_pagar = false;
+reset role; select pruebas.como_sistema();
+select pruebas.ok((select count(*) >= 1 from cola_inropay where memo_id = :'pj3'),
+  'con «cuenta verificada para pagar» apagado, pasa igual (como en el diseño original)');
+reset role; select pruebas.como('carla@inroprin.com');
+update parametros_memo set segundo_control_pagos = true, cuenta_verificada_para_pagar = true;
 
 reset role;
 \echo '\nCiclo en orden\n'

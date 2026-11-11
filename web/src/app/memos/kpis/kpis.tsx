@@ -52,7 +52,6 @@ function Contenido({ persona }: { persona: Persona }) {
       </div>
     );
   }
-  const max = Math.max(1, ...(k?.por_area ?? []).map((a) => a.emitidos));
   const hueco = <span className="hueco h-6.5 w-20" />;
   const totalAcogida = Math.max(1, Object.values(k?.acogida_dist ?? {}).reduce((s, x) => s + x, 0));
 
@@ -188,31 +187,71 @@ function Contenido({ persona }: { persona: Persona }) {
         </Tarjeta>
       </div>
 
-      <Tarjeta titulo="Por área" nota={k ? `${k.emitidos} memos · ${dinero(k.monto_pen, "PEN")} pedidos en soles` : undefined}>
-        {!k ? (
-          <span className="hueco h-24 w-full" />
-        ) : k.por_area.length === 0 ? (
-          <p className="text-[13px] text-ink-3">Sin memos en el período.</p>
-        ) : (
-          <ul className="space-y-3">
-            {k.por_area.map((a) => (
-              <li key={`${a.empresa}-${a.area}`}>
-                <div className="mb-1 flex items-baseline justify-between gap-2.5">
-                  <span className="truncate text-[13.5px] font-semibold text-ink">
-                    {a.empresa} · {a.area}
-                  </span>
-                  <span className="whitespace-nowrap text-[12.5px] text-ink-2">
-                    {a.emitidos} · {a.observados} observados · {dinero(a.monto, "PEN")}
-                  </span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-bar bg-surface-3">
-                  <span className="block h-full rounded-bar bg-primary transition-[width] duration-500" style={{ width: `${(a.emitidos / max) * 100}%` }} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Tarjeta>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <Tarjeta titulo="Por empresa y área" nota={k ? `${k.emitidos} memos · ${dinero(k.monto_pen, "PEN")} pedidos en soles` : undefined}>
+          {!k ? (
+            <span className="hueco h-24 w-full" />
+          ) : k.por_area.length === 0 ? (
+            <p className="text-[13px] text-ink-3">Sin memos en el período.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[13px]">
+                <thead>
+                  <tr className="border-b border-control text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-ink-3">
+                    <th className="py-2 pr-3 font-semibold">Área</th>
+                    <th className="py-2 pr-3 font-semibold">Empresa</th>
+                    <th className="py-2 pr-3 text-right font-semibold">Memos</th>
+                    <th className="py-2 pr-3 text-right font-semibold">Por aprobar</th>
+                    <th className="py-2 pr-3 text-right font-semibold">Observados</th>
+                    <th className="py-2 text-right font-semibold">Monto (S/)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {k.por_area.map((a) => (
+                    <tr key={`${a.empresa}-${a.area}`} className="border-b border-line last:border-0">
+                      <td className="py-2 pr-3 font-semibold text-ink">{a.area}</td>
+                      <td className="py-2 pr-3 text-ink-2">{a.empresa}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{a.emitidos}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{a.pendientes}</td>
+                      <td className={`py-2 pr-3 text-right tabular-nums ${a.observados > 0 ? "font-semibold text-danger-strong" : ""}`}>{a.observados}</td>
+                      <td className="py-2 text-right tabular-nums">{dinero(a.monto, "PEN")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Tarjeta>
+
+        <Tarjeta titulo="Memos por semana" nota="Emitidos, últimas semanas del período">
+          {!k ? (
+            <span className="hueco h-24 w-full" />
+          ) : k.por_semana.length === 0 ? (
+            <p className="text-[13px] text-ink-3">Sin memos en el período.</p>
+          ) : (
+            <Semanas datos={k.por_semana.slice(-8)} />
+          )}
+        </Tarjeta>
+      </div>
+    </div>
+  );
+}
+
+/** Barras de memos emitidos por semana (la última, más fuerte). */
+function Semanas({ datos }: { datos: { semana: string; emitidos: number }[] }) {
+  const max = Math.max(1, ...datos.map((d) => d.emitidos));
+  return (
+    <div className="flex h-40 items-end gap-2" role="img" aria-label={datos.map((d) => `${d.semana}: ${d.emitidos}`).join(", ")}>
+      {datos.map((d, i) => (
+        <div key={d.semana} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+          <span className="text-[11px] font-semibold tabular-nums text-ink-2">{d.emitidos}</span>
+          <span
+            className={`block w-full rounded-t-[4px] transition-[height] duration-500 ${i === datos.length - 1 ? "bg-primary-strong" : "bg-primary/70"}`}
+            style={{ height: `${Math.max(4, (d.emitidos / max) * 100)}px` }}
+          />
+          <span className="text-[10.5px] tabular-nums text-ink-3">{d.semana.slice(8, 10)}/{d.semana.slice(5, 7)}</span>
+        </div>
+      ))}
     </div>
   );
 }

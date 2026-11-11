@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { recargarContexto, useContextoMemos, type Unidad } from "@/lib/memos";
+import { ENTREGA_VIATICOS, recargarContexto, useContextoMemos, type Contexto, type Unidad } from "@/lib/memos";
 import {
+  activarTipo,
   agregarUsuario,
+  guardarParametros,
   guardarSemilla,
   guardarUnidad,
   guardarUsuario,
@@ -22,7 +24,7 @@ import {
 import type { Persona } from "@/lib/sesion";
 import { Interruptor, PaginaAdmin } from "../../administracion";
 import { Aviso, botonPrincipal, campoSuelto } from "../../piezas";
-import { Tarjeta } from "../piezas-memo";
+import { ChipPropuesta, Tarjeta } from "../piezas-memo";
 
 export function ConfiguracionMemos() {
   return (
@@ -72,6 +74,8 @@ function Contenido({ persona }: { persona: Persona }) {
     <div className="space-y-4">
       {falla && <Aviso>{falla}</Aviso>}
       {hecho && <Aviso tono="info">{hecho}</Aviso>}
+
+      <Funciones contexto={contexto} hacer={hacer} />
 
       <Tarjeta titulo="Áreas emisoras" nota={`Cada una con su serie: empresa + área + año. Semilla = último número ya emitido en ${anio}.`}>
         <div className="overflow-x-auto">
@@ -338,6 +342,74 @@ function Personas({
           ))}
         </ul>
       )}
+    </Tarjeta>
+  );
+}
+
+/**
+ * Lo que INROMEMOS agregó al diseño original se puede apagar: así Franco
+ * decide. Apagado, la plataforma se comporta como en su diseño.
+ */
+function Funciones({ contexto, hacer }: { contexto: Contexto; hacer: (f: () => Promise<unknown>, ok: string) => void }) {
+  const p = contexto.catalogos.parametros;
+  const viaticos = contexto.catalogos.tipos.find((t) => t.codigo === ENTREGA_VIATICOS);
+  const filas: { clave: string; titulo: string; que: string; apagado: string; activo: boolean; cambiar: (v: boolean) => Promise<unknown> }[] = [
+    {
+      clave: "segundo",
+      titulo: "Segundo control de pagos",
+      que: "Un memo con pago que emite el jefe o el suplente lo aprueba la otra persona del área o, si no hay, administración.",
+      apagado: "Apagado: el jefe que emite un pago lo aprueba al emitir.",
+      activo: p.segundo_control_pagos,
+      cambiar: (v) => guardarParametros({ segundo_control_pagos: v }),
+    },
+    {
+      clave: "cuenta",
+      titulo: "Cuenta verificada antes de pagar",
+      que: "Un memo con una cuenta bancaria nueva o distinta no pasa a InroPay hasta que quien verifica cuentas la apruebe.",
+      apagado: "Apagado: pasa a InroPay con la cuenta pendiente de verificar.",
+      activo: p.cuenta_verificada_para_pagar,
+      cambiar: (v) => guardarParametros({ cuenta_verificada_para_pagar: v }),
+    },
+    {
+      clave: "solicitar",
+      titulo: "Solicitar memo",
+      que: "Cualquier persona pide un memo a un área desde Memorandums; le llega a su jefatura.",
+      apagado: "Apagado: no aparece en Memorandums. «Solicitar viáticos» sigue en Rendiciones.",
+      activo: p.solicitar_memo,
+      cambiar: (v) => guardarParametros({ solicitar_memo: v }),
+    },
+  ];
+  if (viaticos) {
+    filas.push({
+      clave: "viaticos",
+      titulo: "Entrega de viáticos (a rendir)",
+      que: "Un tipo de memo para entregar viáticos antes del viaje, separado del reembolso. Se rinde en Rendiciones.",
+      apagado: "Apagado: no se puede emitir; queda solo el reembolso de viáticos.",
+      activo: viaticos.activo,
+      cambiar: (v) => activarTipo(ENTREGA_VIATICOS, v),
+    });
+  }
+  return (
+    <Tarjeta titulo="Funciones de INROMEMOS" nota="Lo que se agregó al diseño original. Apagado, funciona como en el diseño de Franco">
+      <ul className="divide-y divide-line">
+        {filas.map((f) => (
+          <li key={f.clave} className="flex items-start gap-4 py-3 first:pt-0 last:pb-0">
+            <div className="min-w-0 flex-1">
+              <p className="flex flex-wrap items-center gap-2 text-[14px] font-semibold text-ink">
+                {f.titulo}
+                <ChipPropuesta />
+              </p>
+              <p className="mt-0.5 text-[13px] text-ink-2">{f.que}</p>
+              {!f.activo && <p className="mt-0.5 text-[12.5px] text-ink-3">{f.apagado}</p>}
+            </div>
+            <Interruptor
+              activo={f.activo}
+              etiqueta={f.titulo}
+              onCambiar={(v) => hacer(() => f.cambiar(v), `${f.titulo}: ${v ? "encendido" : "apagado"}.`)}
+            />
+          </li>
+        ))}
+      </ul>
     </Tarjeta>
   );
 }

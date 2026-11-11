@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { corrido, lineaDeTiempo } from "./memo-linea";
+import { carriles, corrido, lineaDeTiempo, tiemposDelMemo } from "./memo-linea";
 import type { Evento, Memo } from "./memos";
 
 const memo = (m: Partial<Memo>): Memo =>
@@ -89,5 +89,32 @@ describe("línea de tiempo del memo", () => {
     expect(corrido("2026-11-01T10:00:00Z", "2026-11-01T15:00:00Z")).toBe("5 h");
     expect(corrido("2026-11-01T10:00:00Z", "2026-11-04T09:00:00Z")).toBe("2 d");
     expect(corrido(null, "2026-11-04T09:00:00Z")).toBeNull();
+  });
+
+  it("separa el documento del pago, y mide los tiempos desde la emisión", () => {
+    const m = memo({
+      estado: "recibido",
+      requiere_pago: true,
+      estado_pago: "registrado",
+      emitido_en: "2026-11-09T14:00:00Z",
+      aprobado_en: "2026-11-09T15:00:00Z",
+      enviado_en: "2026-11-09T15:00:00Z",
+      recibido_en: "2026-11-09T15:30:00Z",
+    });
+    const eventos = [
+      ev("emitido", "2026-11-09T14:00:00Z"),
+      ev("observado", "2026-11-09T14:20:00Z", { comentario: "Falta el endoso" }),
+      ev("pago", "2026-11-09T16:00:00Z", { despues: "en_analisis" }),
+      ev("pago", "2026-11-09T18:00:00Z", { despues: "registrado" }),
+    ];
+    const c = carriles(lineaDeTiempo(m, eventos));
+    expect(c.documento.map((p) => p.titulo)).toEqual(["Emitido", "Observado", "Aprobado", "Enviado al destinatario", "Cargo recibido"]);
+    expect(c.pago.map((p) => [p.titulo, p.estado])).toEqual([
+      ["En análisis (Finanzas)", "hecho"],
+      ["Registrado en RG", "hecho"],
+      ["Programado para pago", "siguiente"],
+      ["Pagado", "pendiente"],
+    ]);
+    expect(tiemposDelMemo(m, eventos)).toEqual({ aprobacion: "1 h", cargo: "2 h", registro: "4 h", pago: null, observaciones: 1 });
   });
 });

@@ -26,7 +26,9 @@ import {
   IconoLista,
   IconoMas,
   IconoMemo,
+  IconoReloj,
   IconoNube,
+  IconoPago,
   IconoPersonas,
   IconoReportes,
   IconoSalir,
@@ -73,6 +75,22 @@ const usePantalla = () =>
     (f) => (oyentesPantalla.add(f), () => oyentesPantalla.delete(f)),
     () => pantalla,
     () => pantalla,
+  );
+
+// La pestaña abierta del panel de memos: el menú marca «Por aprobar»,
+// «Cargos pendientes» o «Seguimiento de pagos» cuando corresponde.
+let pestanaPanel: string | null = null;
+const oyentesPestana = new Set<() => void>();
+export function marcarPestanaPanel(p: string | null) {
+  if (p === pestanaPanel) return;
+  pestanaPanel = p;
+  oyentesPestana.forEach((f) => f());
+}
+const usePestanaPanel = () =>
+  useSyncExternalStore(
+    (f) => (oyentesPestana.add(f), () => oyentesPestana.delete(f)),
+    () => pestanaPanel,
+    () => null,
   );
 
 /**
@@ -191,7 +209,14 @@ function Armazon({
   );
 }
 
-type Item = { clave: Activo; texto: string; href: string; Icono: (p: { className?: string }) => ReactNode };
+type Item = {
+  clave: Activo;
+  texto: string;
+  href: string;
+  Icono: (p: { className?: string }) => ReactNode;
+  /** Lleva a una pestaña del panel de memos. */
+  pestana?: string;
+};
 /** Lo que un ítem del menú abre en vez de navegar. */
 type Accion = "nueva" | "solicitar-memo" | "solicitar-viaticos";
 
@@ -247,7 +272,8 @@ export function veKpis(persona: Persona, permisos: { aprueba: number[]; verKpis:
 
 /** Lo que hay en cada módulo para esta persona, en orden. */
 function useMenu(persona: Persona, modulo: Modulo) {
-  const permisos = useContextoMemos(persona.correo).contexto?.permisos;
+  const { contexto } = useContextoMemos(persona.correo);
+  const permisos = contexto?.permisos;
   const { rendiciones } = useRendiciones();
   const porAtender = useMemosPorAtender(persona);
   const porRevisar = (rendiciones ?? []).filter((r) => r.estado === "enviada").length;
@@ -256,18 +282,33 @@ function useMenu(persona: Persona, modulo: Modulo) {
   // Las que esperan a mis áreas (si emito o soy jefatura): no las mías.
   const solicitudesPendientes = (solicitudes ?? []).filter((s) => s.estado === "pendiente" && s.solicitante_id !== persona.id).length;
   const emite = persona.es_administracion || (permisos?.emite.length ?? 0) > 0;
+  const solicitarMemo = Boolean(contexto?.catalogos.parametros.solicitar_memo);
+  const { memos } = useMemos();
+  const lista = memos ?? [];
+  // Los contadores del menú, como en el diseño de Franco: lo que espera de ti.
+  const porAprobar = lista.filter((m) => espera(m, persona, permisos ?? null) === "aprobar").length;
+  const porCargo = lista.filter((m) => espera(m, persona, permisos ?? null) === "cargo").length;
 
   const items: (Item & { n?: number; accion?: Accion })[] =
     modulo === "memos"
       ? [
           { clave: "memos", texto: "Panel de memos", href: "/memos/", Icono: IconoMemo, n: porAtender },
-          // Emite quien está en un área; los demás solicitan y el área emite.
+          // Emite quien está en un área; los demás se lo piden al área.
           ...(emite ? [{ clave: "emitir", texto: "Emitir memo", href: "/memos/emitir/", Icono: IconoMas }] : []),
-          { clave: "solicitar", texto: "Solicitar memo", href: "/memos/solicitudes/", Icono: IconoEnviar, accion: "solicitar-memo" as const },
-          { clave: "solicitudes", texto: "Solicitudes", href: "/memos/solicitudes/", Icono: IconoBandeja, n: solicitudesPendientes },
+          { clave: "memos", pestana: "pendiente", texto: "Por aprobar", href: "/memos/?ver=pendiente", Icono: IconoCheck, n: porAprobar },
+          { clave: "memos", pestana: "sin-cargo", texto: "Cargos pendientes", href: "/memos/?ver=sin-cargo", Icono: IconoReloj, n: porCargo },
+          ...(permisos?.registraPagos || persona.es_administracion || emite
+            ? [{ clave: "memos", pestana: "por-pagar", texto: "Seguimiento de pagos", href: "/memos/?ver=por-pagar", Icono: IconoPago }]
+            : []),
+          ...(solicitarMemo
+            ? [{ clave: "solicitar", texto: "Solicitar memo", href: "/memos/solicitudes/", Icono: IconoEnviar, accion: "solicitar-memo" as const }]
+            : []),
+          ...(solicitarMemo || emite || (solicitudes ?? []).length > 0
+            ? [{ clave: "solicitudes", texto: "Solicitudes", href: "/memos/solicitudes/", Icono: IconoBandeja, n: solicitudesPendientes }]
+            : []),
           ...(veKpis(persona, permisos) ? [{ clave: "kpis", texto: "Métricas y KPIs", href: "/memos/kpis/", Icono: IconoReportes }] : []),
           ...(persona.es_administracion || permisos?.verificaCuentas
-            ? [{ clave: "cuentas", texto: "Cuentas por verificar", href: "/memos/cuentas/", Icono: IconoCheck }]
+            ? [{ clave: "cuentas", texto: "Cuentas por verificar", href: "/memos/cuentas/", Icono: IconoAjustes }]
             : []),
         ]
       : [
@@ -276,7 +317,7 @@ function useMenu(persona: Persona, modulo: Modulo) {
           { clave: "solicitar-viaticos", texto: "Solicitar viáticos", href: "/memos/solicitudes/", Icono: IconoEnviar, accion: "solicitar-viaticos" as const },
         ];
   const admin = persona.es_administracion ? (modulo === "memos" ? ADMIN_MEMOS : ADMIN_RENDICIONES) : [];
-  return { items, admin, general: persona.es_administracion ? ADMIN_GENERAL : [], porAtender, porRevisar, observadas, emite };
+  return { items, admin, general: persona.es_administracion ? ADMIN_GENERAL : [], porAtender, porRevisar, observadas, emite, solicitarMemo };
 }
 
 /** Memorandums | Rendiciones: el interruptor de módulo, arriba de la barra. */
@@ -324,10 +365,28 @@ function BarraLateral({
 }) {
   const { rendiciones } = useRendiciones();
   const enCola = usePendientes().length;
+  const empresas = (useContextoMemos(persona.correo).contexto?.catalogos.empresas ?? []).filter((e) => e.activo).length;
   const mias = (rendiciones ?? []).filter(
     (r) => r.responsable_id === persona.id && (EN_CURSO as readonly string[]).includes(r.estado),
   );
   const { items, admin, general, porAtender, porRevisar } = useMenu(persona, modulo);
+  const permisosRol = useContextoMemos(persona.correo).contexto?.permisos;
+  // El rol, como en el pie del menú de Franco.
+  const rol = persona.es_administracion
+    ? "Administración"
+    : permisosRol?.aprueba.length
+      ? "Jefatura de área"
+      : permisosRol?.emite.length
+        ? "Emite memos"
+        : persona.correo;
+  const pestana = usePestanaPanel();
+  const PESTANAS_MENU = ["pendiente", "sin-cargo", "por-pagar"];
+  const marcado = (it: Item) =>
+    it.pestana ? activo === "memos" && pestana === it.pestana : activo === it.clave && !(it.clave === "memos" && pestana && PESTANAS_MENU.includes(pestana));
+  // Ya en el panel: cambia de pestaña sin recargar.
+  const alPestana = (it: Item) => () => {
+    if (it.pestana && activo === "memos") window.dispatchEvent(new CustomEvent("inromemos:pestana", { detail: it.pestana }));
+  };
   const accionar = (a: Accion) => (a === "nueva" ? onNueva() : onSolicitar(a === "solicitar-memo" ? "memos" : "rendiciones"));
   const aIcono = (it: Item & { accion?: Accion }) =>
     it.accion ? (
@@ -335,7 +394,7 @@ function BarraLateral({
         <it.Icono />
       </button>
     ) : (
-      <Link key={it.clave} href={it.href} aria-label={it.texto} title={it.texto} className={`${enlace(activo === it.clave)} h-11 w-11 justify-center px-0`}>
+      <Link key={it.href} href={it.href} onClick={alPestana(it)} aria-label={it.texto} title={it.texto} className={`${enlace(marcado(it))} h-11 w-11 justify-center px-0`}>
         <it.Icono />
       </Link>
     );
@@ -372,19 +431,21 @@ function BarraLateral({
       aria-label="Navegación principal"
       className="sticky top-0 hidden h-dvh w-63 shrink-0 flex-col gap-5 overflow-y-auto border-r border-line bg-surface px-3.5 py-5 md:flex"
     >
-      <div className="flex items-center gap-2.5 px-1.5">
-        <Link href="/" className="flex items-center gap-2.5">
-          <Image src={ruta("inroprin-marca.svg")} alt="" width={28} height={28} />
-          <span className="flex flex-col leading-tight">
-            <Marca />
-            <span className="text-[12px] text-ink-3">Memos y rendiciones</span>
-          </span>
-        </Link>
-        {onAlternar && (
-          <button type="button" onClick={onAlternar} aria-label="Contraer la barra" title="Contraer la barra" className="ml-auto flex h-8 w-8 items-center justify-center rounded-control text-ink-2 hover:bg-surface-2">
-            <IconoIzquierda className="h-4.5 w-4.5" />
-          </button>
-        )}
+      {/* Encabezado como el de Franco: la plataforma, el grupo y cuántas empresas. */}
+      <div className="px-1.5">
+        <div className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5">
+            <Image src={ruta("inroprin-marca.svg")} alt="" width={28} height={28} />
+            <Marca className="text-[16px]" />
+          </Link>
+          {onAlternar && (
+            <button type="button" onClick={onAlternar} aria-label="Contraer la barra" title="Contraer la barra" className="ml-auto flex h-8 w-8 items-center justify-center rounded-control text-ink-2 hover:bg-surface-2">
+              <IconoIzquierda className="h-4.5 w-4.5" />
+            </button>
+          )}
+        </div>
+        <p className="mt-1.5 text-[12.5px] font-semibold leading-tight text-ink-2">{modulo === "memos" ? "Plataforma de Memorandums" : "Rendiciones de caja chica y viáticos"}</p>
+        <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-3">Grupo INROPRIN{empresas ? ` · ${empresas} empresas` : ""}</p>
       </div>
 
       <SelectorModulo modulo={modulo} porAtender={porAtender} porRevisar={persona.es_administracion ? porRevisar : 0} />
@@ -398,7 +459,7 @@ function BarraLateral({
               {it.texto}
             </button>
           ) : (
-            <Link key={it.clave} href={it.href} className={enlace(activo === it.clave)}>
+            <Link key={it.href} href={it.href} onClick={alPestana(it)} className={enlace(marcado(it))}>
               <it.Icono className="h-4.25 w-4.25" />
               {it.texto}
               <Insignia n={it.n ?? 0} />
@@ -478,7 +539,7 @@ function BarraLateral({
         <Iniciales persona={persona} />
         <span className="flex min-w-0 flex-col">
           <span className="truncate text-sm font-semibold text-ink">{persona.nombre || persona.correo}</span>
-          <span className="text-xs text-ink-3">{persona.es_administracion ? "Administración" : persona.correo}</span>
+          <span className="truncate text-xs text-ink-3">{rol}</span>
         </span>
         <BotonSalir />
       </div>
@@ -555,7 +616,7 @@ function NavInferior({
   onSolicitar: (origen: Modulo) => void;
 }) {
   const enCola = usePendientes().length;
-  const { porAtender, emite } = useMenu(persona, modulo);
+  const { porAtender, emite, solicitarMemo } = useMenu(persona, modulo);
   const item = (on: boolean) =>
     `flex min-w-16 flex-col items-center gap-0.5 text-[11px] font-semibold transition-colors duration-150 ${on ? "text-primary-strong" : "text-ink-2"}`;
   return (
@@ -581,12 +642,12 @@ function NavInferior({
               <IconoMas className="h-5.5 w-5.5" />
               Emitir
             </Link>
-          ) : (
+          ) : solicitarMemo ? (
             <button type="button" onClick={() => onSolicitar("memos")} className={item(false)}>
               <IconoEnviar className="h-5.5 w-5.5" />
               Solicitar
             </button>
-          )}
+          ) : null}
           <Link href="/memos/solicitudes/" className={item(activo === "solicitudes")}>
             <IconoBandeja className="h-5.5 w-5.5" />
             Solicitudes

@@ -27,12 +27,14 @@ export function Sustentos({
   contexto,
   editable,
   onCambio,
+  paso,
 }: {
   memoId: string;
   tipoCodigo: string;
   contexto: Contexto;
   editable: boolean;
   onCambio?: () => void;
+  paso?: number;
 }) {
   const pedidos = contexto.catalogos.sustentos.filter((s) => s.tipo_codigo === tipoCodigo);
   const [lista, setLista] = useState<MemoSustento[] | null>(null);
@@ -67,7 +69,7 @@ export function Sustentos({
   const de = (id: number | null) => (lista ?? []).filter((s) => s.sustento_id === id);
 
   return (
-    <Tarjeta titulo="Sustentos" nota={editable ? "PDF, foto, Excel o Word · hasta 20 MB" : "Se copian al legajo de Drive"}>
+    <Tarjeta paso={paso} titulo={editable ? "Sustentos" : "Sustentos y validación"} nota={editable ? "PDF, foto, Excel o Word · hasta 20 MB" : "Se copian al legajo de Drive"}>
       <ul className="space-y-2.5">
         {pedidos.map((p) => (
           <Fila

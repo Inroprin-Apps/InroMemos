@@ -148,6 +148,19 @@ Quedó abierto en la prueba:
 - **Control de ingreso:** «Emitir memo» aparece solo a quien está en un área; los demás solicitan. Toda emisión sigue pasando por la aprobación de la jefatura.
 - **Pendiente:** aviso por correo de cada solicitud nueva a la jefatura (hoy el aviso está en la app).
 
+## 5d. Distribución del diseño de Franco y funciones activables (11-nov-2026)
+
+- **Estilo visual: el nuestro** (colores y letra INROPRIN). **Distribución: la del prototipo aprobado de Franco** (v2, 3-nov), traducida a nuestro estilo:
+  - Menú: encabezado «Plataforma de Memorandums · Grupo INROPRIN · N empresas», y «Por aprobar», «Cargos pendientes» y «Seguimiento de pagos» con contadores.
+  - Panel: «Sincronizado» + Sincronizar, Salud (panel lateral, solo administración), aviso del corte con cuántos memos entran, filtros de período, tipo y ejecución, Excel, lista agrupada por fecha con borde ámbar (espera aprobación) o rojo (fuera de meta), columna de pago y accesos al legajo y al PDF.
+  - Teléfono: bandeja Por aprobar / Dar cargo / Mis memos, y aprobar desde la tarjeta.
+  - Emitir: 5 pasos numerados (quién emite, qué quieres decir, datos de pago, sustentos, destinatarios y envío).
+  - Detalle: botones en la cabecera, resumen en grilla, líneas de pago con su estado, línea de tiempo en dos carriles (documento y pago), tiempos del memo y trazabilidad memo → RG → programación → pago.
+  - Métricas: tabla por empresa y área, y memos por semana.
+- **Se quedó lo nuestro** donde Franco pidió otra cosa después del prototipo (franja de cifras compacta, panel lateral) o donde es más claro (datos de pago por tarjeta, bitácora, barra inferior en el teléfono).
+- **Para conversar con Franco:** «Ver como», Análisis y Registro en el detalle, vistas y descargas, motivos de observaciones, auditoría de correlativos y «Legajos y archivo».
+- **Funciones de INROMEMOS** (Áreas y permisos), con la etiqueta morada «Nuevo · INROMEMOS»: segundo control de pagos (encendido), cuenta verificada antes de pagar (encendido), Solicitar memo (apagado) y entrega de viáticos (encendido). Apagadas, la plataforma funciona como en el diseño original.
+
 ## 6. Lo que sigue
 
 | # | Qué | Depende de |

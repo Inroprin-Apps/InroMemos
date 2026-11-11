@@ -37,10 +37,12 @@ import {
   type Revision,
 } from "@/lib/memos";
 import type { Persona } from "@/lib/sesion";
-import { IconoAprobar, IconoEnviar, IconoMas } from "../../iconos";
+import { IconoAprobar, IconoBajar, IconoCarpeta, IconoEnviar, IconoMas } from "../../iconos";
 import { ConSesion } from "../../marco";
 import { Aviso, botonPrincipal, botonSecundario, campo } from "../../piezas";
-import { ChipEstado, ChipPago, Encabezado, Papel, Tarjeta } from "../piezas-memo";
+import { AvisoCorte, ChipEstado, ChipPago, ChipPropuesta, Encabezado, Papel, Tarjeta } from "../piezas-memo";
+import { LineaDeTiempo } from "../panel-lateral";
+import { carriles, lineaDeTiempo, tiemposDelMemo } from "@/lib/memo-linea";
 import { Sustentos } from "./sustentos";
 import { PanelTesoreria } from "./tesoreria";
 
@@ -117,12 +119,28 @@ function Memo_({
   };
 
   const titulo = memo.numero_visible ? `Memo ${memo.numero_visible}` : "Memo en borrador";
+  const conPago = memo.requiere_pago;
+  const pasoFinal = conPago ? 5 : 4;
 
   return (
     <div className="space-y-4">
       <Encabezado titulo={titulo} descripcion={`${unidad?.empresa?.nombre ?? ""} · ${unidad?.nombre ?? ""} · ${tipo?.nombre ?? memo.tipo_codigo}`}>
         <ChipEstado estado={memo.estado} />
         <ChipPago estado={memo.estado_pago} />
+        {tipo?.propuesto_inromemos && <ChipPropuesta />}
+        {editable && <span className="text-[12.5px] font-semibold text-success-strong">Borrador guardado</span>}
+        {!editable && memo.drive_carpeta_id && (
+          <a href={`https://drive.google.com/drive/folders/${memo.drive_carpeta_id}`} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-2 text-[13px] ${botonSecundario}`}>
+            <IconoCarpeta className="h-4 w-4" />
+            Abrir legajo
+          </a>
+        )}
+        {!editable && memo.pdf_drive_id && (
+          <a href={`https://drive.google.com/file/d/${memo.pdf_drive_id}/view`} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-2 text-[13px] ${botonSecundario}`}>
+            <IconoBajar className="h-4 w-4" />
+            Descargar PDF
+          </a>
+        )}
         <Link href="/memos/" className={`text-[13px] ${botonSecundario}`}>
           Volver al panel
         </Link>
@@ -145,52 +163,101 @@ function Memo_({
       )}
       {falla && <Aviso>{falla}</Aviso>}
 
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]">
-        <div className="min-w-0 space-y-4">
-          {editable ? (
-            <>
-              <Redaccion memo={memo} persona={persona} onCambiar={cambiarMemo} />
-              {memo.requiere_pago && (
-                <LineasEditables
-                  memo={memo}
-                  lineas={lineas}
-                  contexto={contexto}
-                  onCambiar={cambiarLinea}
-                  onLineas={(ls) => setDatos({ ...datos, lineas: ls })}
-                  onFalla={setFalla}
-                />
+      {editable ? (
+        // Emitir en pasos, como el diseño de Franco; a la derecha, el papel.
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]">
+          <div className="min-w-0 space-y-4">
+            <QuienEmite memo={memo} contexto={contexto} persona={persona} />
+            <Redaccion memo={memo} onCambiar={cambiarMemo} />
+            {conPago && (
+              <LineasEditables
+                memo={memo}
+                lineas={lineas}
+                contexto={contexto}
+                onCambiar={cambiarLinea}
+                onLineas={(ls) => setDatos({ ...datos, lineas: ls })}
+                onFalla={setFalla}
+              />
+            )}
+            <Sustentos memoId={memo.id} tipoCodigo={memo.tipo_codigo} contexto={contexto} editable onCambio={revisar} paso={conPago ? 4 : 3} />
+            <Tarjeta paso={pasoFinal} titulo="Destinatarios y envío" nota={memo.numero_visible ?? "El número se asigna al enviar"}>
+              <Destinatarios memo={memo} persona={persona} onCambiar={cambiarMemo} />
+              {conPago && (
+                <div className="mt-4">
+                  <AvisoCorte />
+                </div>
               )}
-              <Sustentos memoId={memo.id} tipoCodigo={memo.tipo_codigo} contexto={contexto} editable onCambio={revisar} />
-            </>
-          ) : (
-            <>
-              {memo.requiere_pago &&
-                ["aprobado", "enviado", "recibido"].includes(memo.estado) &&
-                !memo.estado_pago &&
-                lineas.some((l) => ["distinta", "pendiente"].includes(l.estado_cuenta)) && (
-                  <Aviso tono="info">
-                    Este memo todavía no pasa a pagos (InroPay): tiene una cuenta bancaria nueva o distinta a la registrada. Pasa solo cuando quien verifica
-                    cuentas la apruebe; si la rechaza, el memo vuelve a quien lo emitió para corregirla.
-                  </Aviso>
-                )}
-              <Acciones memo={memo} persona={persona} contexto={contexto} onHecho={onCambio} />
-              {permisos.registraPagos && <PanelTesoreria memo={memo} onHecho={onCambio} />}
-              <Legajo memo={memo} />
-              <Resumen memo={memo} lineas={lineas} contexto={contexto} />
-              <Sustentos memoId={memo.id} tipoCodigo={memo.tipo_codigo} contexto={contexto} editable={false} />
-            </>
-          )}
-          <Bitacora eventos={eventos} />
+              <Enviar memo={memo} revision={revision} esAprobador={permisos.aprueba.includes(memo.unidad_id)} onHecho={onCambio} />
+            </Tarjeta>
+            <Bitacora eventos={eventos} />
+          </div>
+          <aside className="min-w-0 space-y-4 lg:sticky lg:top-4">
+            <Tarjeta titulo="Vista previa" nota={memo.confidencialidad !== "normal" ? "Sin personas: es reservado" : "Así sale el PDF"}>
+              <Papel memo={memo} lineas={lineas} empresa={unidad?.empresa?.nombre ?? ""} unidad={unidad?.nombre ?? ""} />
+            </Tarjeta>
+          </aside>
         </div>
-
-        <aside className="min-w-0 space-y-4 lg:sticky lg:top-4">
-          {editable && <Enviar memo={memo} revision={revision} esAprobador={permisos.aprueba.includes(memo.unidad_id)} onHecho={onCambio} />}
-          <Tarjeta titulo="Vista previa" nota={memo.confidencialidad !== "normal" ? "Sin personas: es reservado" : "Así sale el PDF"}>
-            <Papel memo={memo} lineas={lineas} empresa={unidad?.empresa?.nombre ?? ""} unidad={unidad?.nombre ?? ""} />
-          </Tarjeta>
-        </aside>
-      </div>
+      ) : (
+        // El detalle, con la estructura del diseño de Franco: a la izquierda el memo,
+        // a la derecha su seguimiento (línea de tiempo, tiempos, trazabilidad).
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+          <div className="min-w-0 space-y-4">
+            {memo.requiere_pago &&
+              ["aprobado", "enviado", "recibido"].includes(memo.estado) &&
+              !memo.estado_pago &&
+              catalogos.parametros.cuenta_verificada_para_pagar &&
+              lineas.some((l) => ["distinta", "pendiente"].includes(l.estado_cuenta)) && (
+                <Aviso tono="info">
+                  Este memo todavía no pasa a pagos (InroPay): tiene una cuenta bancaria nueva o distinta a la registrada. Pasa solo cuando quien verifica
+                  cuentas la apruebe; si la rechaza, el memo vuelve a quien lo emitió para corregirla.
+                </Aviso>
+              )}
+            <Acciones memo={memo} persona={persona} contexto={contexto} onHecho={onCambio} />
+            {permisos.registraPagos && <PanelTesoreria memo={memo} onHecho={onCambio} />}
+            <Legajo memo={memo} />
+            <Resumen memo={memo} contexto={contexto} />
+            {conPago && lineas.length > 0 && <LineasDePago memo={memo} lineas={lineas} contexto={contexto} />}
+            <Sustentos memoId={memo.id} tipoCodigo={memo.tipo_codigo} contexto={contexto} editable={false} />
+            <Bitacora eventos={eventos} />
+          </div>
+          <aside className="min-w-0 space-y-4">
+            <Seguimiento memo={memo} eventos={eventos} />
+            <Tarjeta titulo="Vista previa" nota="Así sale el PDF">
+              <Papel memo={memo} lineas={lineas} empresa={unidad?.empresa?.nombre ?? ""} unidad={unidad?.nombre ?? ""} />
+            </Tarjeta>
+          </aside>
+        </div>
+      )}
     </div>
+  );
+}
+
+/** Paso 1: quién emite. Lo pone la sesión; el número lo asigna el servidor al enviar. */
+function QuienEmite({ memo, contexto, persona }: { memo: Memo; contexto: Contexto; persona: Persona }) {
+  const unidad = contexto.catalogos.unidades.find((u) => u.id === memo.unidad_id);
+  const tipo = contexto.catalogos.tipos.find((t) => t.codigo === memo.tipo_codigo);
+  const dato = (k: string, v: React.ReactNode) => (
+    <div className="min-w-0">
+      <span className={etiqueta}>{k}</span>
+      <span className="block text-[14px] font-semibold text-ink">{v}</span>
+    </div>
+  );
+  return (
+    <Tarjeta paso={1} titulo="Quién emite" nota="Tomado de tu sesión">
+      <div className="grid gap-3 sm:grid-cols-3">
+        {dato("Empresa", unidad?.empresa?.nombre ?? "—")}
+        {dato("Área", unidad?.nombre ?? "—")}
+        {dato("De (emisor)", memo.emisor_nombre || persona.nombre || persona.correo)}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px] text-ink-2">
+        <span className={etiqueta}>Tipo</span>
+        <span className="font-semibold text-ink">{tipo?.nombre ?? memo.tipo_codigo}</span>
+        {tipo?.propuesto_inromemos && <ChipPropuesta />}
+      </div>
+      <p className="mt-3 rounded-row bg-surface-2 px-3 py-2 text-[12.5px] text-ink-2">
+        Número del memo: <b className="font-semibold text-ink">{memo.numero_visible ?? `se asigna al enviar (serie ${unidad?.empresa?.codigo ?? "—"} · ${unidad?.codigo ?? "—"})`}</b>. Nadie lo escribe ni lo repite.
+      </p>
+    </Tarjeta>
   );
 }
 
@@ -208,20 +275,13 @@ function plantilla(memo: Memo): string {
   return `Me dirijo a usted a fin de ${memo.requiere_pago ? "solicitar el pago de " : "comunicarle "}${memo.asunto ? memo.asunto.charAt(0).toLowerCase() + memo.asunto.slice(1) : "…"}, según el detalle y los documentos adjuntos.${pago}`;
 }
 
-function Redaccion({ memo, persona, onCambiar }: { memo: Memo; persona: Persona; onCambiar: (c: CambiosMemo) => void }) {
+function Redaccion({ memo, onCambiar }: { memo: Memo; onCambiar: (c: CambiosMemo) => void }) {
   const [asunto, setAsunto] = useState(memo.asunto);
   const [cuerpo, setCuerpo] = useState(memo.cuerpo);
-  const [destinatario, setDestinatario] = useState(memo.destinatario_correo);
-  const [copias, setCopias] = useState(memo.copias.join(", "));
-  const [directorio, setDirectorio] = useState<{ correo: string; nombre: string }[]>([]);
 
   const [idea, setIdea] = useState("");
   const [redactando, setRedactando] = useState(false);
   const [avisoIA, setAvisoIA] = useState<string | null>(null);
-
-  useEffect(() => {
-    leerDirectorio().then(setDirectorio, () => setDirectorio([]));
-  }, []);
 
   const conIA = async () => {
     setRedactando(true);
@@ -241,7 +301,7 @@ function Redaccion({ memo, persona, onCambiar }: { memo: Memo; persona: Persona;
 
   return (
     <>
-      <Tarjeta titulo="¿Qué quieres decir?" nota="Se guarda solo al salir de cada campo">
+      <Tarjeta paso={2} titulo="¿Qué quieres decir?" nota="Se guarda solo al salir de cada campo">
         <div className="mb-3.5 rounded-row bg-primary-soft p-3">
           <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.06em] text-primary-strong">
             Escribe una frase y la IA redacta el asunto y el cuerpo
@@ -295,8 +355,20 @@ function Redaccion({ memo, persona, onCambiar }: { memo: Memo; persona: Persona;
           />
         </label>
       </Tarjeta>
+    </>
+  );
+}
 
-      <Tarjeta titulo="A quién va">
+/** Paso final: a quién va (el destinatario principal da el cargo) y con copia a quién. */
+function Destinatarios({ memo, persona, onCambiar }: { memo: Memo; persona: Persona; onCambiar: (c: CambiosMemo) => void }) {
+  const [destinatario, setDestinatario] = useState(memo.destinatario_correo);
+  const [copias, setCopias] = useState(memo.copias.join(", "));
+  const [directorio, setDirectorio] = useState<{ correo: string; nombre: string }[]>([]);
+  useEffect(() => {
+    leerDirectorio().then(setDirectorio, () => setDirectorio([]));
+  }, []);
+  return (
+    <>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className={etiqueta}>Destinatario principal (da el cargo)</span>
@@ -333,7 +405,6 @@ function Redaccion({ memo, persona, onCambiar }: { memo: Memo; persona: Persona;
               </option>
             ))}
         </datalist>
-      </Tarjeta>
     </>
   );
 }
@@ -386,6 +457,7 @@ function LineasEditables({
 
   return (
     <Tarjeta
+      paso={3}
       titulo="Datos de pago"
       nota={
         tipo?.modo_lineas === "por_documento"
@@ -878,7 +950,7 @@ function Enviar({ memo, revision, esAprobador, onHecho }: { memo: Memo; revision
   };
 
   return (
-    <Tarjeta titulo={memo.estado === "observado" ? "Volver a enviar" : "Enviar"} nota={memo.numero_visible ?? "El número se asigna al enviar"}>
+    <div className="mt-4 border-t border-line pt-4">
       {revision === null ? (
         <p className="text-[13px] text-ink-3">Revisando…</p>
       ) : errores.length ? (
@@ -939,7 +1011,7 @@ function Enviar({ memo, revision, esAprobador, onHecho }: { memo: Memo; revision
             Descartar borrador
           </button>
         ))}
-    </Tarjeta>
+    </div>
   );
 }
 
@@ -1062,58 +1134,189 @@ function Acciones({ memo, persona, contexto, onHecho }: { memo: Memo; persona: P
   );
 }
 
-function Resumen({ memo, lineas, contexto }: { memo: Memo; lineas: Linea[]; contexto: Contexto }) {
-  const conceptos = new Map(contexto.catalogos.conceptos.map((c) => [c.id, c.nombre]));
-  const filas: [string, React.ReactNode][] = [
-    ["Número técnico", memo.id_tecnico ?? "—"],
+/** Resumen en grilla, como el detalle del diseño de Franco. */
+function Resumen({ memo, contexto }: { memo: Memo; contexto: Contexto }) {
+  const unidad = contexto.catalogos.unidades.find((u) => u.id === memo.unidad_id);
+  const tipo = contexto.catalogos.tipos.find((t) => t.codigo === memo.tipo_codigo);
+  const fecha = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleString("es-PE", { timeZone: "America/Lima", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }) : "—";
+  const datos: [string, React.ReactNode][] = [
+    ["Empresa", unidad?.empresa?.nombre ?? "—"],
+    ["Área", unidad?.nombre ?? "—"],
+    ["Tipo", tipo?.nombre ?? memo.tipo_codigo],
     ["Emisor", memo.emisor_nombre],
-    ["Destinatario", memo.destinatario_nombre || memo.destinatario_correo || "—"],
-    ["Copias", memo.copias.length ? memo.copias.join(", ") : "—"],
-    ["Versión", String(memo.version)],
+    ["Destinatario principal", memo.destinatario_nombre || memo.destinatario_correo || "—"],
+    ["En copia", memo.copias.length ? memo.copias.join(", ") : "—"],
+    ["Fecha de emisión", <span key="f" className="tabular-nums">{fecha(memo.emitido_en)}</span>],
+    ["Versión", memo.version > 1 ? `${memo.version} (corregido)` : "1"],
+    ["ID técnico", <span key="i" className="tabular-nums">{memo.id_tecnico ?? "—"}</span>],
   ];
-  if (memo.requiere_pago) filas.push(["Total", <b key="t" className="tabular-nums">{dinero(memo.total, memo.moneda)}</b>]);
-  if (memo.recibido_en) filas.push(["Cargo", `${new Date(memo.recibido_en).toLocaleString("es-PE", { timeZone: "America/Lima", dateStyle: "short", timeStyle: "short" })}${memo.valoracion ? ` · valoración ${memo.valoracion}/5` : ""}`]);
+  if (memo.requiere_pago) datos.push(["Total", <b key="t" className="tabular-nums">{dinero(memo.total, memo.moneda)}</b>]);
+  if (memo.recibido_en) datos.push(["Cargo", `${fecha(memo.recibido_en)}${memo.valoracion ? ` · valoró ${memo.valoracion}/5` : ""}`]);
   return (
-    <Tarjeta titulo="Resumen">
-      <dl className="grid grid-cols-[9rem_1fr] gap-x-3 gap-y-1.5 text-[13.5px]">
-        {filas.map(([k, v]) => (
-          <div key={k} className="contents">
-            <dt className="text-ink-3">{k}</dt>
-            <dd className="min-w-0 break-words text-ink">{v}</dd>
+    <Tarjeta titulo="Resumen" nota={memo.confidencialidad !== "normal" ? `Confidencialidad: ${memo.confidencialidad}` : undefined}>
+      <dl className="grid gap-x-5 gap-y-3 sm:grid-cols-3">
+        {datos.map(([k, v]) => (
+          <div key={k} className="min-w-0">
+            <dt className={etiqueta}>{k}</dt>
+            <dd className="break-words text-[13.5px] font-semibold text-ink">{v}</dd>
           </div>
         ))}
       </dl>
-      {memo.requiere_pago && lineas.length > 0 && memo.confidencialidad === "normal" && (
-        <div className="mt-4 overflow-x-auto">
+      {memo.drive_carpeta_id && (
+        <a
+          href={`https://drive.google.com/drive/folders/${memo.drive_carpeta_id}`}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 flex items-center gap-2.5 rounded-row bg-surface-2 px-3 py-2.5 text-[12.5px] text-ink-2 hover:text-ink"
+        >
+          <IconoCarpeta className="h-4 w-4 shrink-0" />
+          <span className="min-w-0 truncate">
+            Legajo: {unidad?.empresa?.nombre ?? ""} › {unidad?.nombre ?? ""} › MEMO {memo.numero_visible ?? ""}
+          </span>
+        </a>
+      )}
+    </Tarjeta>
+  );
+}
+
+/** Las líneas de pago con su estado en el registro de gastos. */
+function LineasDePago({ memo, lineas, contexto }: { memo: Memo; lineas: Linea[]; contexto: Contexto }) {
+  const conceptos = new Map(contexto.catalogos.conceptos.map((c) => [c.id, c.nombre]));
+  const empresas = new Map(contexto.catalogos.empresas.map((e) => [e.id, e.nombre]));
+  const reservado = memo.confidencialidad !== "normal";
+  const estado = memo.estado_pago ? (
+    <ChipPago estado={memo.estado_pago} />
+  ) : ["aprobado", "enviado", "recibido"].includes(memo.estado) ? (
+    <span className="text-[12px] text-ink-3">Por pasar</span>
+  ) : (
+    <span className="text-[12px] text-ink-3">—</span>
+  );
+  return (
+    <Tarjeta titulo="Líneas de pago" nota="Una línea por comprobante, para trazar cada pago">
+      {reservado ? (
+        <p className="text-[13px] text-ink-2">
+          Reservado: {lineas.length} líneas por {dinero(memo.total, memo.moneda)}. El detalle nominal va en el anexo restringido.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[13px]">
             <thead>
               <tr className="border-b border-control text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-ink-3">
-                <th className="py-2 pr-2 font-semibold">Beneficiario</th>
-                <th className="py-2 pr-2 font-semibold">Concepto</th>
-                <th className="py-2 pr-2 font-semibold">Pago</th>
-                <th className="py-2 text-right font-semibold">Monto</th>
+                <th className="py-2 pr-3 font-semibold">Empresa pagadora</th>
+                <th className="py-2 pr-3 font-semibold">Beneficiario</th>
+                <th className="py-2 pr-3 font-semibold">Comprobante</th>
+                <th className="py-2 pr-3 font-semibold">Forma</th>
+                <th className="py-2 pr-3 text-right font-semibold">Monto</th>
+                <th className="py-2 font-semibold">En el registro</th>
               </tr>
             </thead>
             <tbody>
               {lineas.map((l) => (
-                <tr key={l.id} className="border-b border-line align-top last:border-0">
-                  <td className="py-2 pr-2">
+                <tr key={l.id} className="border-b border-line align-top">
+                  <td className="py-2 pr-3">{l.empresa_pagadora_id ? empresas.get(l.empresa_pagadora_id) : "—"}</td>
+                  <td className="py-2 pr-3">
                     {l.beneficiario || "—"}
-                    <span className="block text-[11.5px] text-ink-3">{l.beneficiario_doc}</span>
+                    <span className="block text-[11.5px] tabular-nums text-ink-3">
+                      {l.beneficiario_doc}
+                      {l.concepto_id ? ` · ${conceptos.get(l.concepto_id)}` : ""}
+                    </span>
                   </td>
-                  <td className="py-2 pr-2">{l.concepto_id ? conceptos.get(l.concepto_id) : "—"}</td>
-                  <td className="py-2 pr-2">
+                  <td className="py-2 pr-3 tabular-nums">{l.numero ? `${l.tipo_comprobante} ${l.serie}-${l.numero}` : "—"}</td>
+                  <td className="py-2 pr-3">
                     {FORMAS_PAGO[l.forma_pago]}
                     <span className="block text-[11.5px] text-ink-3">{l.banco ? `${l.banco} ${l.cuenta || l.cci}` : "Sin cuenta"}</span>
                   </td>
-                  <td className="py-2 text-right tabular-nums">{dinero(l.monto, l.moneda)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{dinero(l.monto, l.moneda)}</td>
+                  <td className="py-2">{estado}</td>
                 </tr>
               ))}
+              <tr>
+                <td colSpan={4} className="py-2 pr-3 text-right text-[12px] font-bold uppercase tracking-[0.05em] text-ink-2">
+                  Total
+                </td>
+                <td className="py-2 pr-3 text-right font-bold tabular-nums">{dinero(memo.total, memo.moneda)}</td>
+                <td />
+              </tr>
             </tbody>
           </table>
         </div>
       )}
     </Tarjeta>
+  );
+}
+
+/** Pasos de la trazabilidad: del memo al pago, como la del diseño de Franco. */
+const TRAZA: { titulo: string; nota: string; llega: (m: Memo) => boolean }[] = [
+  { titulo: "Memo", nota: "aprobado", llega: (m) => ["aprobado", "enviado", "recibido"].includes(m.estado) },
+  { titulo: "Registro de gastos", nota: "Análisis y Registro", llega: (m) => ["registrado", "programado", "pagado"].includes(m.estado_pago ?? "") },
+  { titulo: "Programación y pagos", nota: "Tesorería", llega: (m) => ["programado", "pagado"].includes(m.estado_pago ?? "") },
+  { titulo: "Pago", nota: "y voucher en el legajo", llega: (m) => m.estado_pago === "pagado" },
+];
+
+/** El seguimiento del memo: línea de tiempo en dos carriles, tiempos y trazabilidad. */
+function Seguimiento({ memo, eventos }: { memo: Memo; eventos: Evento[] }) {
+  const linea = lineaDeTiempo(memo, eventos);
+  const { documento, pago } = carriles(linea);
+  const t = tiemposDelMemo(memo, eventos);
+  const titulo = "mb-2 text-[11px] font-bold uppercase tracking-[0.07em] text-ink-3";
+  const cifras: [string, string][] = [
+    ["Emisión → aprobación", t.aprobacion ?? "—"],
+    ["Emisión → cargo", t.cargo ?? "—"],
+    ...(memo.requiere_pago ? ([["Emisión → registro", t.registro ?? "—"], ["Emisión → pago", t.pago ?? "—"]] as [string, string][]) : []),
+    ["Observaciones", t.observaciones === 0 ? "Ninguna" : t.observaciones === 1 ? "1 vez" : `${t.observaciones} veces`],
+  ];
+  return (
+    <>
+      <Tarjeta titulo="Línea de tiempo">
+        <p className={titulo}>Estado del documento</p>
+        <LineaDeTiempo pasos={documento} />
+        {memo.requiere_pago && pago.length > 0 && (
+          <>
+            <p className={`${titulo} mt-2`}>Estado del pago</p>
+            <LineaDeTiempo pasos={pago} />
+          </>
+        )}
+      </Tarjeta>
+      <Tarjeta titulo="Tiempos del memo">
+        <dl className="grid grid-cols-2 gap-2.5">
+          {cifras.map(([k, v]) => (
+            <div key={k} className="rounded-row border border-line px-3 py-2.5">
+              <dd className="text-[18px] font-extrabold tabular-nums tracking-[-0.02em] text-ink">{v}</dd>
+              <dt className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-ink-3">{k}</dt>
+            </div>
+          ))}
+        </dl>
+      </Tarjeta>
+      {memo.requiere_pago && (
+        <Tarjeta titulo="Trazabilidad" nota="Del memo al pago">
+          <ol className="space-y-1.5">
+            {TRAZA.map((p, i) => {
+              const llego = p.llega(memo);
+              return (
+                <li key={p.titulo}>
+                  {i > 0 && (
+                    <span aria-hidden="true" className="block pb-1.5 text-center text-[11px] text-ink-3">
+                      ↓
+                    </span>
+                  )}
+                  <div
+                    className={`flex items-center justify-between gap-3 rounded-row border px-3 py-2 text-[13px] ${
+                      llego ? "border-success/40 bg-success-soft" : "border-dashed border-control"
+                    }`}
+                  >
+                    <span className={`font-semibold ${llego ? "text-ink" : "text-ink-3"}`}>{p.titulo}</span>
+                    <span className={`text-[12px] ${llego ? "text-success-strong" : "text-ink-3"}`}>
+                      {llego ? (i === 0 ? memo.id_tecnico ?? "aprobado" : "hecho") : `pendiente · ${p.nota}`}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </Tarjeta>
+      )}
+    </>
   );
 }
 
@@ -1160,7 +1363,8 @@ function Bitacora({ eventos }: { eventos: Evento[] }) {
 
 /** El PDF aprobado y el legajo en Drive (los genera el servidor al aprobarse). */
 function Legajo({ memo }: { memo: Memo }) {
-  if (!["aprobado", "enviado", "recibido"].includes(memo.estado)) return null;
+  // Con el PDF listo, los botones van en la cabecera (como el diseño de Franco).
+  if (!["aprobado", "enviado", "recibido"].includes(memo.estado) || memo.pdf_drive_id) return null;
   return (
     <Tarjeta titulo="PDF y legajo" nota={memo.pdf_drive_id ? "En Drive" : "Se genera en unos minutos"}>
       {memo.pdf_drive_id ? (

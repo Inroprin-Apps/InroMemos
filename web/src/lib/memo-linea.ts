@@ -112,3 +112,28 @@ export function lineaDeTiempo(m: Memo, eventos: Evento[]): Linea {
     siguiente: faltan[0]?.titulo ?? null,
   };
 }
+
+/** ¿El paso es del pago (InroPay, Tesorería) y no del documento? */
+const esDelPago = (p: Paso) => PAGO.some((x) => x.estado === p.clave) || p.clave.startsWith("obs-pago-");
+
+/** La línea en dos carriles, como el detalle del diseño de Franco: el documento y el pago. */
+export function carriles(l: Linea): { documento: Paso[]; pago: Paso[] } {
+  return { documento: l.pasos.filter((p) => !esDelPago(p)), pago: l.pasos.filter(esDelPago) };
+}
+
+/** Los tiempos del memo: desde la emisión hasta cada hito, y cuántas veces lo observaron. */
+export function tiemposDelMemo(m: Memo, eventos: Evento[]) {
+  const momento = (estado: EstadoPago) =>
+    eventos
+      .filter((e) => e.tipo === "pago" && e.detalle?.despues === estado)
+      .map((e) => e.en)
+      .sort()
+      .at(-1) ?? null;
+  return {
+    aprobacion: corrido(m.emitido_en, m.aprobado_en),
+    cargo: corrido(m.emitido_en, m.recibido_en),
+    registro: m.requiere_pago ? corrido(m.emitido_en, momento("registrado")) : null,
+    pago: m.requiere_pago ? corrido(m.emitido_en, momento("pagado")) : null,
+    observaciones: eventos.filter((e) => e.tipo === "observado" || (e.tipo === "pago" && e.detalle?.despues === "observado_analisis")).length,
+  };
+}

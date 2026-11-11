@@ -19,6 +19,18 @@ export function ChipPago({ estado }: { estado: EstadoPago | null }) {
   return <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[12.5px] font-semibold ${clase}`}>{ESTADOS_PAGO[estado]}</span>;
 }
 
+/** Lo que propuso INROMEMOS y Franco todavía no confirma: borde punteado, un color reservado. */
+export function ChipPropuesta({ className = "" }: { className?: string }) {
+  return (
+    <span
+      title="Propuesto por INROMEMOS: no está en el diseño original de la plataforma"
+      className={`inline-flex whitespace-nowrap rounded-full border border-dashed border-propuesta bg-propuesta-soft px-2 py-0.5 text-[11.5px] font-semibold text-propuesta ${className}`}
+    >
+      Nuevo · INROMEMOS
+    </span>
+  );
+}
+
 /** El título de cada pantalla, con su explicación y, a la derecha, sus acciones. */
 export function Encabezado({ titulo, descripcion, children }: { titulo: string; descripcion?: string; children?: ReactNode }) {
   return (
@@ -58,12 +70,35 @@ export function Kpi({
   );
 }
 
-export function Tarjeta({ titulo, nota, children, className = "" }: { titulo?: string; nota?: ReactNode; children: ReactNode; className?: string }) {
+export function Tarjeta({
+  titulo,
+  nota,
+  paso,
+  children,
+  className = "",
+}: {
+  titulo?: string;
+  nota?: ReactNode;
+  /** Número del paso (Emitir en 5 pasos, como el diseño de Franco). */
+  paso?: number;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <section className={`min-w-0 rounded-card border border-control bg-surface px-5.5 py-5 ${className}`}>
       {(titulo || nota) && (
         <div className="mb-3.5 flex flex-wrap items-baseline justify-between gap-2.5">
-          {titulo && <h2 className="text-[15px] font-bold text-ink">{titulo}</h2>}
+          {titulo && (
+            <h2 className="flex items-center gap-2.5 text-[15px] font-bold text-ink">
+              {paso != null && (
+                <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-control text-[12px] font-bold tabular-nums text-ink-2">
+                  {paso}
+                </span>
+              )}
+              {paso != null && <span className="sr-only">Paso {paso}: </span>}
+              {titulo}
+            </h2>
+          )}
           {nota && <span className="text-xs text-ink-3">{nota}</span>}
         </div>
       )}
