@@ -164,6 +164,15 @@ function Memo_({
             </>
           ) : (
             <>
+              {memo.requiere_pago &&
+                ["aprobado", "enviado", "recibido"].includes(memo.estado) &&
+                !memo.estado_pago &&
+                lineas.some((l) => ["distinta", "pendiente"].includes(l.estado_cuenta)) && (
+                  <Aviso tono="info">
+                    Este memo todavía no pasa a pagos (InroPay): tiene una cuenta bancaria nueva o distinta a la registrada. Pasa solo cuando quien verifica
+                    cuentas la apruebe; si la rechaza, el memo vuelve a quien lo emitió para corregirla.
+                  </Aviso>
+                )}
               <Acciones memo={memo} persona={persona} contexto={contexto} onHecho={onCambio} />
               {permisos.registraPagos && <PanelTesoreria memo={memo} onHecho={onCambio} />}
               <Legajo memo={memo} />
@@ -898,8 +907,13 @@ function Enviar({ memo, revision, esAprobador, onHecho }: { memo: Memo; revision
         className={`mt-3 flex w-full items-center justify-center gap-2 ${botonPrincipal}`}
       >
         <IconoEnviar className="h-4 w-4" />
-        {enviando ? "Enviando…" : esAprobador ? "Emitir (lo apruebas al emitir)" : "Enviar a aprobación"}
+        {enviando ? "Enviando…" : esAprobador && !memo.requiere_pago ? "Emitir (lo apruebas al emitir)" : "Enviar a aprobación"}
       </button>
+      {esAprobador && memo.requiere_pago && (
+        <p className="mt-2 text-[12px] text-ink-3">
+          Es un memo con pago: lo aprueba otra persona (el suplente o el jefe del área; si no hay, administración). Nadie se aprueba sus propios pagos.
+        </p>
+      )}
       {memo.estado === "borrador" &&
         (descartar ? (
           <div className="mt-3 space-y-2">
@@ -934,7 +948,8 @@ function Enviar({ memo, revision, esAprobador, onHecho }: { memo: Memo; revision
 // ---------------------------------------------------------------------------
 
 function Acciones({ memo, persona, contexto, onHecho }: { memo: Memo; persona: Persona; contexto: Contexto; onHecho: () => void }) {
-  const mia = espera(memo, persona, contexto.permisos);
+  const comoAdmin = persona.es_administracion && memo.estado === "pendiente" && memo.emisor_id !== persona.id;
+  const mia = espera(memo, persona, contexto.permisos) ?? (comoAdmin ? "aprobar" : null);
   const [modo, setModo] = useState<"observar" | "anular" | null>(null);
   const [texto, setTexto] = useState("");
   const [puntaje, setPuntaje] = useState<number | null>(null);
@@ -967,6 +982,11 @@ function Acciones({ memo, persona, contexto, onHecho }: { memo: Memo; persona: P
 
   return (
     <Tarjeta titulo={mia === "aprobar" ? "Te toca aprobar" : mia === "cargo" ? "Te toca dar cargo" : "Acciones"}>
+      {mia === "aprobar" && comoAdmin && !contexto.permisos.aprueba.includes(memo.unidad_id) && (
+        <p className="mb-2.5 text-[12.5px] text-ink-2">
+          Apruebas como administración: sirve cuando quien emitió es la jefatura del área y no hay otra persona que lo apruebe.
+        </p>
+      )}
       {mia === "aprobar" && (
         <div className="flex flex-wrap gap-2.5">
           <button type="button" disabled={trabajando} onClick={() => hacer(async () => (await aprobarMemo(memo.id), publicarMemo(memo.id)))} className={`inline-flex items-center gap-2 ${botonPrincipal}`}>
