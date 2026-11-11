@@ -48,9 +48,9 @@ export function MisRendiciones({ persona }: { persona: Persona }) {
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+      <header className="flex flex-wrap items-end justify-between gap-3 md:pr-12">
         <div>
-          <h1 className="text-2xl font-bold text-ink">Mis rendiciones</h1>
+          <h1 className="text-[21px] font-extrabold text-ink">Mis rendiciones</h1>
           <p className="mt-1 text-ink-2">Tus memos de viáticos y las cajas chicas que administras.</p>
         </div>
         <button type="button" onClick={() => setNueva(true)} className={botonPrincipal}>
