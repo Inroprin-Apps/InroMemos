@@ -9,7 +9,7 @@ import { dinero, useContextoMemos, type Contexto } from "@/lib/memos";
 import type { Persona } from "@/lib/sesion";
 import { atenderSolicitud, cancelarSolicitud, ESTADOS_SOLICITUD, rechazarSolicitud, useSolicitudes, type Solicitud } from "@/lib/solicitudes";
 import { ConSesion } from "../../marco";
-import { Aviso, botonPrincipal, botonSecundario, campo } from "../../piezas";
+import { Aviso, botonPrincipal, botonSecundario, campo, Etiqueta } from "../../piezas";
 import { Encabezado } from "../piezas-memo";
 
 export function SolicitudesMemo() {
@@ -57,7 +57,7 @@ function Contenido({ persona }: { persona: Persona }) {
             >
               {v === "recibidas" ? "Recibidas" : "Mías"}
               {v === "recibidas" && pendientesRecibidas > 0 && (
-                <span className="rounded-full bg-danger px-1.5 text-[10.5px] font-bold text-on-fill">{pendientesRecibidas}</span>
+                <span className="rounded-full bg-surface-3 px-1.5 text-[10.5px] font-bold tabular-nums text-ink-2">{pendientesRecibidas}</span>
               )}
             </button>
           ))}
@@ -134,7 +134,7 @@ function Tarjeta({ s, persona, contexto, recibida }: { s: Solicitud; persona: Pe
           </p>
           {s.estado === "rechazada" && s.motivo_rechazo && <p className="mt-1.5 text-[12.5px] text-danger-strong">Motivo: {s.motivo_rechazo}</p>}
         </div>
-        <span className={`inline-flex rounded-full px-2.5 py-1 text-[12px] font-semibold ${e.clase}`}>{e.texto}</span>
+        <Etiqueta tono={e.tono}>{e.texto}</Etiqueta>
       </div>
 
       {falla && (

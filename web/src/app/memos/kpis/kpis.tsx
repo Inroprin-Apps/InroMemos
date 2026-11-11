@@ -5,7 +5,7 @@ import { dinero, leerKpis, useContextoMemos, type Kpis } from "@/lib/memos";
 import type { Persona } from "@/lib/sesion";
 import { TEXTO_ACCION, type Accion } from "@/lib/valoracion";
 import { ConSesion, veKpis } from "../../marco";
-import { Aviso, campoSuelto } from "../../piezas";
+import { Aviso, campoSuelto, Etiqueta } from "../../piezas";
 import { Encabezado, Kpi, Tarjeta } from "../piezas-memo";
 
 export function KpisMemos() {
@@ -17,7 +17,8 @@ const haceDias = (n: number) => new Date(Date.now() - n * 864e5).toLocaleDateStr
 const horas = (h: number | null) => (h == null ? "—" : h < 1 ? `${Math.round(h * 60)} min` : h >= 48 ? `${Math.round(h / 24)} d` : `${h.toLocaleString("es-PE")} h`);
 const minutos = (m: number | null) => (m == null ? "—" : m < 1 ? "< 1 min" : `${m.toLocaleString("es-PE")} min`);
 const pct = (p: number | null) => (p == null ? "—" : `${p}%`);
-const CARAS = ["", "😞", "🙁", "😐", "🙂", "😄"];
+/** La escala de 1 a 5, en palabras (sin caritas). */
+const ESCALA = ["", "Muy mal", "Mal", "Regular", "Bien", "Muy bien"];
 
 /**
  * Indicadores de la plataforma, para las jefaturas (cada una ve sus áreas;
@@ -111,22 +112,24 @@ function Contenido({ persona }: { persona: Persona }) {
           {!k ? (
             <span className="hueco h-24 w-full" />
           ) : k.acogida_n === 0 ? (
-            <p className="text-[13px] text-ink-3">Todavía nadie valoró. Después de cada acción la app pregunta «¿cómo te fue?» con cinco caritas.</p>
+            <p className="text-[13px] text-ink-3">Todavía nadie valoró. Después de cada acción la app pregunta «¿cómo te fue?» en una escala del 1 al 5.</p>
           ) : (
             <div className="space-y-4">
               <p className="flex items-baseline gap-2">
                 <span className="text-[28px] font-extrabold tabular-nums text-ink">{k.acogida?.toLocaleString("es-PE")}</span>
-                <span className="text-[13px] text-ink-2">de 5 · {CARAS[Math.round(k.acogida ?? 0)]}</span>
+                <span className="text-[13px] text-ink-2">de 5 · {ESCALA[Math.round(k.acogida ?? 0)]}</span>
               </p>
               <ul className="space-y-1.5">
                 {[5, 4, 3, 2, 1].map((n) => {
                   const c = k.acogida_dist[String(n)] ?? 0;
                   return (
                     <li key={n} className="flex items-center gap-3 text-[13px]">
-                      <span className="w-6 text-center">{CARAS[n]}</span>
-                      <span className="h-2 flex-1 overflow-hidden rounded-bar bg-surface-3">
+                      <span className="w-24 shrink-0 text-ink-2">
+                        <b className="font-semibold tabular-nums text-ink">{n}</b> · {ESCALA[n]}
+                      </span>
+                      <span className="h-1.5 flex-1 overflow-hidden rounded-bar bg-surface-3">
                         <span
-                          className={`block h-full rounded-bar transition-[width] duration-500 ${n >= 4 ? "bg-success" : n === 3 ? "bg-warning" : "bg-danger"}`}
+                          className="block h-full rounded-bar bg-primary transition-[width] duration-500"
                           style={{ width: `${(c / totalAcogida) * 100}%` }}
                         />
                       </span>
@@ -146,7 +149,7 @@ function Contenido({ persona }: { persona: Persona }) {
                 <ul className="space-y-1.5 border-t border-line pt-3">
                   {k.comentarios.map((c, i) => (
                     <li key={i} className="text-[12.5px] text-ink-2">
-                      <span className="mr-1">{CARAS[c.puntaje]}</span>«{c.comentario}»
+                      <b className="mr-1.5 font-semibold tabular-nums text-ink">{c.puntaje}/5</b>«{c.comentario}»
                       <span className="text-ink-3"> · {TEXTO_ACCION[c.accion as Accion] ?? c.accion}</span>
                     </li>
                   ))}
@@ -166,17 +169,9 @@ function Contenido({ persona }: { persona: Persona }) {
           ) : (
             <div className="space-y-2">
               <p className="flex flex-wrap items-center gap-2">
-                <span
-                  className={`rounded-full px-2.5 py-1 text-[12.5px] font-bold ${
-                    k.auditoria.nivel === "ok"
-                      ? "bg-success-soft text-success-strong"
-                      : k.auditoria.nivel === "observaciones"
-                        ? "bg-warning-soft text-warning-strong"
-                        : "bg-danger-soft text-danger-strong"
-                  }`}
-                >
+                <Etiqueta tono={k.auditoria.nivel === "ok" ? "ok" : k.auditoria.nivel === "observaciones" ? "aviso" : "peligro"}>
                   {k.auditoria.nivel === "ok" ? "Sin hallazgos" : k.auditoria.nivel === "observaciones" ? `${k.auditoria.hallazgos} observaciones` : "Hallazgos críticos"}
-                </span>
+                </Etiqueta>
                 <span className="text-[12px] text-ink-3">
                   {new Date(k.auditoria.en).toLocaleDateString("es-PE", { day: "numeric", month: "short", year: "numeric" })} · {k.auditoria.auditor}
                 </span>

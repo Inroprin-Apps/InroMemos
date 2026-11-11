@@ -72,7 +72,7 @@ export function lineaDeTiempo(m: Memo, eventos: Evento[]): Linea {
       titulo: "Cargo recibido",
       fecha: m.recibido_en,
       quien: m.destinatario_nombre || undefined,
-      detalle: m.valoracion ? `valoró ${"★".repeat(m.valoracion)}${"☆".repeat(5 - m.valoracion)}` : undefined,
+      detalle: m.valoracion ? `valoró ${m.valoracion} de 5` : undefined,
       hecho: Boolean(m.recibido_en),
     },
   ];

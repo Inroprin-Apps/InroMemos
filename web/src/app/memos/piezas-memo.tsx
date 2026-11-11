@@ -6,17 +6,27 @@ import { ruta } from "@/lib/base";
 import { enmascarar, periodoViaje, proximoCiclo, textoCorte, textoDia } from "@/lib/memo-reglas";
 import { ENTREGA_VIATICOS, ESTADOS_MEMO, ESTADOS_PAGO, dinero, type EstadoMemo, type EstadoPago, type Linea, type Memo } from "@/lib/memos";
 import { IconoReloj } from "../iconos";
+import { Etiqueta } from "../piezas";
 
 /** Chip de estado: la palabra y el color dicen lo mismo. */
 export function ChipEstado({ estado }: { estado: EstadoMemo }) {
   const e = ESTADOS_MEMO[estado];
-  return <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[12.5px] font-semibold ${e.clase}`}>{e.texto}</span>;
+  return <Etiqueta tono={e.tono}>{e.texto}</Etiqueta>;
 }
 
 export function ChipPago({ estado }: { estado: EstadoPago | null }) {
   if (!estado) return null;
-  const clase = estado === "pagado" ? "bg-success-soft text-success-strong" : estado === "observado_analisis" ? "bg-danger-soft text-danger-strong" : "bg-primary-soft text-primary-strong";
-  return <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[12.5px] font-semibold ${clase}`}>{ESTADOS_PAGO[estado]}</span>;
+  return <Etiqueta tono={estado === "pagado" ? "ok" : estado === "observado_analisis" ? "peligro" : "info"}>{ESTADOS_PAGO[estado]}</Etiqueta>;
+}
+
+/** «Te toca…»: lo único que pide acción. Texto rojo con su punto, sin relleno. */
+export function TeToca({ que }: { que: "aprobar" | "cargo" | "corregir" }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-bold text-danger-strong">
+      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-danger" />
+      {que === "aprobar" ? "Te toca aprobar" : que === "cargo" ? "Te toca dar cargo" : "Te toca corregir"}
+    </span>
+  );
 }
 
 /** Lo que propuso INROMEMOS y Franco todavía no confirma: borde punteado, un color reservado. */
@@ -111,9 +121,9 @@ export function Tarjeta({
 export function AvisoCorte({ ahora = new Date() }: { ahora?: Date }) {
   const c = proximoCiclo(ahora);
   return (
-    <p className="flex flex-wrap items-center gap-2 rounded-card bg-warning-soft px-4 py-3 text-[13px] text-warning-strong">
-      <IconoReloj className="h-4.5 w-4.5 shrink-0" />
-      <b className="font-semibold">Próximo corte: {textoCorte(c.corte)}</b>
+    <p className="flex flex-wrap items-center gap-2 rounded-card border border-line bg-surface-2 px-4 py-3 text-[13px] text-ink-2">
+      <IconoReloj className="h-4.5 w-4.5 shrink-0 text-warning-strong" />
+      <b className="font-semibold text-ink">Próximo corte: {textoCorte(c.corte)}</b>
       <span>· se paga el {textoDia(c.pago)}. Lo aprobado a las 4:00 pm exactas ya pasa al siguiente.</span>
     </p>
   );

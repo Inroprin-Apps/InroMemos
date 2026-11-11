@@ -302,9 +302,9 @@ export function LineaDeTiempo({ pasos }: { pasos: Paso[] }) {
         const lapso = p.fecha && anterior?.fecha ? corrido(anterior.fecha, p.fecha) : null;
         const punto =
           p.estado === "hecho"
-            ? "border-success bg-success text-on-fill"
+            ? "border-success/60 bg-success-soft text-success-strong"
             : p.estado === "alerta"
-              ? "border-danger bg-danger text-on-fill"
+              ? "border-danger/60 bg-danger-soft text-danger-strong"
               : p.estado === "siguiente"
                 ? "border-primary bg-surface text-primary"
                 : "border-control bg-surface text-ink-3";

@@ -250,12 +250,10 @@ export function Marca({ className = "text-[15px]" }: { className?: string }) {
   );
 }
 
-/** Insignia del menú: roja si espera algo de ti. */
+/** Contador del menú: discreto (gris); lo que espera de ti se nota por el número. */
 function Insignia({ n }: { n: number }) {
   if (!n) return null;
-  return (
-    <span className="ml-auto rounded-full bg-danger px-1.75 py-px text-[11px] font-bold tabular-nums text-on-fill">{n}</span>
-  );
+  return <span className="ml-auto rounded-full bg-surface-3 px-1.75 py-px text-[11px] font-bold tabular-nums text-ink-2">{n}</span>;
 }
 
 /** Cuántos memos esperan algo de quien está dentro (aprobar, dar cargo, corregir). */
@@ -332,7 +330,7 @@ function SelectorModulo({ modulo, porAtender, porRevisar }: { modulo: Modulo; po
     >
       {texto}
       {n > 0 && (
-        <span className={`rounded-full px-1.5 text-[10.5px] tabular-nums ${modulo === m ? "bg-on-fill/20" : "bg-danger text-on-fill"}`}>{n}</span>
+        <span className={`rounded-full px-1.5 text-[10.5px] tabular-nums ${modulo === m ? "bg-on-fill/20" : "bg-surface-3 text-ink-2"}`}>{n}</span>
       )}
     </Link>
   );
@@ -630,7 +628,7 @@ function NavInferior({
             <span className="relative flex">
               <IconoMemo className="h-5.5 w-5.5" />
               {porAtender > 0 && (
-                <span className="absolute -right-3 -top-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-on-fill">
+                <span className="absolute -right-3 -top-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-ink px-1 text-[10px] font-bold text-on-fill">
                   {porAtender}
                 </span>
               )}
@@ -669,7 +667,7 @@ function NavInferior({
         <button type="button" onClick={onCola} className={item(false)}>
           <span className="relative flex">
             <IconoSubir className="h-5.5 w-5.5" />
-            <span className="absolute -right-3 -top-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-on-fill">
+            <span className="absolute -right-3 -top-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-ink px-1 text-[10px] font-bold text-on-fill">
               {enCola}
             </span>
           </span>

@@ -4,22 +4,44 @@ import type { ReactNode } from "react";
 import { soles } from "@/lib/cuentas";
 import type { EstadoRendicion } from "@/lib/tipos";
 
-const ESTADOS: Record<EstadoRendicion, { texto: string; clase: string }> = {
-  abierta: { texto: "En curso", clase: "bg-primary-soft text-primary-strong" },
-  enviada: { texto: "Enviada a administración", clase: "bg-warning-soft text-warning-strong" },
-  observada: { texto: "Observada", clase: "bg-danger-soft text-danger-strong" },
-  aprobada: { texto: "Aprobada", clase: "bg-success-soft text-success-strong" },
-  repuesta: { texto: "Repuesta", clase: "bg-success-soft text-success-strong" },
-  liquidada: { texto: "Liquidada", clase: "bg-success-soft text-success-strong" },
+/**
+ * El color de un estado: solo un punto. La etiqueta es blanca con borde fino
+ * y texto gris, para que la pantalla no se llene de colores; el punto dice
+ * de qué se trata (gris, azul, verde, ámbar, rojo).
+ */
+export type Tono = "neutro" | "info" | "ok" | "aviso" | "peligro";
+
+const PUNTO: Record<Tono, string> = {
+  neutro: "bg-ink-3",
+  info: "bg-primary",
+  ok: "bg-success",
+  aviso: "bg-warning-strong",
+  peligro: "bg-danger",
+};
+
+export function Etiqueta({ tono, children, className = "" }: { tono: Tono; children: ReactNode; className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-surface px-2 py-0.5 text-[12px] font-semibold text-ink-2 ${className}`}
+    >
+      <span aria-hidden="true" className={`h-1.5 w-1.5 shrink-0 rounded-full ${PUNTO[tono]}`} />
+      {children}
+    </span>
+  );
+}
+
+const ESTADOS: Record<EstadoRendicion, { texto: string; tono: Tono }> = {
+  abierta: { texto: "En curso", tono: "info" },
+  enviada: { texto: "Enviada a administración", tono: "aviso" },
+  observada: { texto: "Observada", tono: "peligro" },
+  aprobada: { texto: "Aprobada", tono: "ok" },
+  repuesta: { texto: "Repuesta", tono: "ok" },
+  liquidada: { texto: "Liquidada", tono: "ok" },
 };
 
 export function Estado({ estado }: { estado: EstadoRendicion }) {
   const e = ESTADOS[estado];
-  return (
-    <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${e.clase}`}>
-      {e.texto}
-    </span>
-  );
+  return <Etiqueta tono={e.tono}>{e.texto}</Etiqueta>;
 }
 
 /** Cuánto del monto se gastó. Pasado el 100 % se marca: hay reembolso. */
@@ -56,7 +78,7 @@ export function Aviso({ tono = "peligro", children }: { tono?: "peligro" | "avis
   const clases = {
     peligro: "bg-danger-soft text-danger-strong",
     aviso: "bg-warning-soft text-warning-strong",
-    info: "bg-primary-soft text-primary-strong",
+    info: "border border-line bg-surface-2 text-ink-2",
   }[tono];
   return (
     <p role="alert" className={`rounded-control px-4 py-3 text-sm ${clases}`}>

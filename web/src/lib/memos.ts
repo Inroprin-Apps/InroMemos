@@ -393,14 +393,14 @@ export const memoDesdeRendicion = (rendicionId: string, unidadId: number) =>
 // Palabras
 // ---------------------------------------------------------------------------
 
-export const ESTADOS_MEMO: Record<EstadoMemo, { texto: string; clase: string }> = {
-  borrador: { texto: "Borrador", clase: "bg-surface-3 text-ink-2" },
-  pendiente: { texto: "Pendiente de aprobación", clase: "bg-warning-soft text-warning-strong" },
-  observado: { texto: "Observado", clase: "bg-danger-soft text-danger-strong" },
-  aprobado: { texto: "Aprobado", clase: "bg-success-soft text-success-strong" },
-  enviado: { texto: "Enviado", clase: "bg-primary-soft text-primary-strong" },
-  recibido: { texto: "Recibido", clase: "bg-success-soft text-success-strong" },
-  anulado: { texto: "Anulado", clase: "bg-surface-3 text-ink-2" },
+export const ESTADOS_MEMO: Record<EstadoMemo, { texto: string; tono: "neutro" | "info" | "ok" | "aviso" | "peligro" }> = {
+  borrador: { texto: "Borrador", tono: "neutro" },
+  pendiente: { texto: "Pendiente de aprobación", tono: "aviso" },
+  observado: { texto: "Observado", tono: "peligro" },
+  aprobado: { texto: "Aprobado", tono: "ok" },
+  enviado: { texto: "Enviado", tono: "info" },
+  recibido: { texto: "Recibido", tono: "ok" },
+  anulado: { texto: "Anulado", tono: "neutro" },
 };
 
 export const ESTADOS_PAGO: Record<EstadoPago, string> = {

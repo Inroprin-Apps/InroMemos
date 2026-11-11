@@ -39,7 +39,7 @@ import {
 import type { Persona } from "@/lib/sesion";
 import { IconoAprobar, IconoBajar, IconoCarpeta, IconoEnviar, IconoMas } from "../../iconos";
 import { ConSesion } from "../../marco";
-import { Aviso, botonPrincipal, botonSecundario, campo } from "../../piezas";
+import { Aviso, botonPrincipal, botonSecundario, campo, Etiqueta, type Tono } from "../../piezas";
 import { AvisoCorte, ChipEstado, ChipPago, ChipPropuesta, Encabezado, Papel, Tarjeta } from "../piezas-memo";
 import { LineaDeTiempo } from "../panel-lateral";
 import { carriles, lineaDeTiempo, tiemposDelMemo } from "@/lib/memo-linea";
@@ -509,13 +509,7 @@ const ESTADO_CUENTA: Record<string, [string, "ok" | "warn" | "danger" | "muted"]
 };
 
 function Chip({ tono, children }: { tono: "ok" | "warn" | "danger" | "muted"; children: React.ReactNode }) {
-  const c = {
-    ok: "bg-success-soft text-success-strong",
-    warn: "bg-warning-soft text-warning-strong",
-    danger: "bg-danger-soft text-danger-strong",
-    muted: "bg-surface-3 text-ink-2",
-  }[tono];
-  return <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${c}`}>{children}</span>;
+  return <Etiqueta tono={{ ok: "ok", warn: "aviso", danger: "peligro", muted: "neutro" }[tono] as Tono}>{children}</Etiqueta>;
 }
 
 function LineaEditable({
@@ -1083,7 +1077,7 @@ function Acciones({ memo, persona, contexto, onHecho }: { memo: Memo; persona: P
                 aria-checked={puntaje === n}
                 onClick={() => setPuntaje(puntaje === n ? null : n)}
                 className={`h-10 w-10 rounded-control border text-[14px] font-bold ${
-                  puntaje != null && n <= puntaje ? "border-primary bg-primary-soft text-primary-strong" : "border-control bg-surface text-ink-2 hover:bg-surface-2"
+                  puntaje === n ? "border-ink bg-ink text-on-fill" : "border-control bg-surface text-ink-2 hover:bg-surface-2"
                 }`}
               >
                 {n}
@@ -1302,11 +1296,14 @@ function Seguimiento({ memo, eventos }: { memo: Memo; eventos: Evento[] }) {
                   )}
                   <div
                     className={`flex items-center justify-between gap-3 rounded-row border px-3 py-2 text-[13px] ${
-                      llego ? "border-success/40 bg-success-soft" : "border-dashed border-control"
+                      llego ? "border-line bg-surface-2" : "border-dashed border-control"
                     }`}
                   >
-                    <span className={`font-semibold ${llego ? "text-ink" : "text-ink-3"}`}>{p.titulo}</span>
-                    <span className={`text-[12px] ${llego ? "text-success-strong" : "text-ink-3"}`}>
+                    <span className={`flex items-center gap-2 font-semibold ${llego ? "text-ink" : "text-ink-3"}`}>
+                      <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${llego ? "bg-success" : "bg-control"}`} />
+                      {p.titulo}
+                    </span>
+                    <span className={`text-[12px] ${llego ? "text-ink-2" : "text-ink-3"}`}>
                       {llego ? (i === 0 ? memo.id_tecnico ?? "aprobado" : "hecho") : `pendiente · ${p.nota}`}
                     </span>
                   </div>

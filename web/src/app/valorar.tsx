@@ -4,12 +4,12 @@ import { useState } from "react";
 import { cerrarValoracion, TEXTO_ACCION, usePedidoDeValoracion, valorar } from "@/lib/valoracion";
 import { IconoCerrar } from "./iconos";
 
-const CARAS = [
-  { n: 1, cara: "😞", texto: "Muy mal" },
-  { n: 2, cara: "🙁", texto: "Mal" },
-  { n: 3, cara: "😐", texto: "Regular" },
-  { n: 4, cara: "🙂", texto: "Bien" },
-  { n: 5, cara: "😄", texto: "Muy bien" },
+const ESCALA = [
+  { n: 1, texto: "Muy mal" },
+  { n: 2, texto: "Mal" },
+  { n: 3, texto: "Regular" },
+  { n: 4, texto: "Bien" },
+  { n: 5, texto: "Muy bien" },
 ];
 
 /** «¿Cómo te fue?»: flota abajo a la derecha después de cada acción. */
@@ -55,22 +55,29 @@ export function Valorar() {
       </div>
       {estado !== "gracias" && (
         <>
-          <div className="mt-2.5 flex justify-between">
-            {CARAS.map((c) => (
+          {/* Escala del 1 al 5, como el cargo: números sobrios, sin caritas. */}
+          <div role="radiogroup" aria-label="Del 1 (muy mal) al 5 (muy bien)" className="mt-3 grid grid-cols-5 gap-1.5">
+            {ESCALA.map((c) => (
               <button
                 key={c.n}
                 type="button"
-                aria-label={c.texto}
+                role="radio"
+                aria-label={`${c.n}: ${c.texto}`}
                 title={c.texto}
-                aria-pressed={puntaje === c.n}
+                aria-checked={puntaje === c.n}
                 onClick={() => setPuntaje(c.n)}
-                className={`flex h-11 w-11 items-center justify-center rounded-full text-[24px] transition-transform duration-150 hover:scale-110 ${
-                  puntaje === c.n ? "scale-110 bg-primary-soft ring-2 ring-primary" : puntaje ? "opacity-50" : ""
+                className={`h-10 rounded-control border text-[14px] font-bold tabular-nums transition-colors duration-150 ${
+                  puntaje === c.n ? "border-ink bg-ink text-on-fill" : "border-control bg-surface text-ink-2 hover:bg-surface-2 hover:text-ink"
                 }`}
               >
-                {c.cara}
+                {c.n}
               </button>
             ))}
+          </div>
+          <div className="mt-1 flex justify-between text-[11px] text-ink-3">
+            <span>Muy mal</span>
+            <span>{puntaje ? ESCALA[puntaje - 1].texto : ""}</span>
+            <span>Muy bien</span>
           </div>
           {puntaje && (
             <form
