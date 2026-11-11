@@ -31,7 +31,7 @@ export function useSubidas({
     if (!lista.length || !rendicion) return;
     setErrores([]);
     // Lo que se hereda se calcula una vez: todo el lote va al mismo proyecto.
-    const base = herencia(filasActuales(), rendicion.tipo, persona);
+    const base = herencia(filasActuales(), rendicion.tipo, persona, rendicion.entrega?.proyecto_id ?? null);
     setErrores(await capturar(rendicion.id, lista, base));
   };
 

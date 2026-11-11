@@ -14,7 +14,7 @@ import type { Archivo, Catalogos, Comprobante } from "@/lib/tipos";
 import { IconoCheck, IconoGirar } from "../../iconos";
 import { ConSesion } from "../../marco";
 import { Aviso, Estado, botonPrincipal, botonSecundario, campo } from "../../piezas";
-import { Lista, Texto, enlaceDrive, useEnlaces, vistaDrive } from "../celdas";
+import { Lista, ListaProyecto, TONOS_FILA as TONOS, Texto, enlaceDrive, opcionesDeConceptos, useEnlaces, vistaDrive } from "../celdas";
 import { useRendicion } from "../vista";
 
 export function VistaRevisar() {
@@ -30,16 +30,6 @@ export function VistaRevisar() {
   );
 }
 
-const TONOS: Record<EstadoFila["clave"], string> = {
-  listo: "text-success-strong",
-  leyendo: "text-primary-strong",
-  falta: "text-warning-strong",
-  repetido: "text-warning-strong",
-  fallido: "text-danger-strong",
-  observado: "text-danger-strong",
-  descartado: "text-ink-3",
-};
-
 function Revisar({ id, inicial, persona }: { id: string; inicial: string | null; persona: Persona }) {
   const { catalogos } = useCatalogos();
   const h = useRendicion(id, persona);
@@ -48,7 +38,7 @@ function Revisar({ id, inicial, persona }: { id: string; inicial: string | null;
 
   const filas = h.datos?.comprobantes ?? [];
   const archivoDe = (c: Comprobante) => h.datos?.archivos.find((a) => a.id === c.archivo_id);
-  const conEstado = filas.map((c) => ({ c, e: estadoFila(c, archivoDe(c), h.repetidos.has(c.id)) }));
+  const conEstado = filas.map((c) => ({ c, e: estadoFila(c, archivoDe(c), h.repetidos.has(c.id), h.datos?.rendicion.entrega) }));
   const indice = Math.max(
     0,
     conEstado.findIndex(({ c }) => c.id === elegido) >= 0
@@ -404,14 +394,13 @@ function Formulario({
         </label>
         <label className={`${rotulo} col-span-2`}>
           Proyecto
-          <Lista
+          <ListaProyecto
             valor={c.proyecto_id}
-            etiqueta="Proyecto"
-            opciones={catalogos.proyectos}
+            proyectos={catalogos.proyectos}
             disabled={!editable}
             vacio="Elegir proyecto…"
             className={`${campo} ${falta(c.proyecto_id == null)}`}
-            onGuardar={(v) => onGuardar(c.id, { proyecto_id: num(v) })}
+            onGuardar={(id) => onGuardar(c.id, { proyecto_id: id })}
           />
         </label>
         <label className={rotulo}>
@@ -433,7 +422,7 @@ function Formulario({
           <Lista
             valor={c.concepto_id}
             etiqueta="Concepto"
-            opciones={catalogos.conceptos}
+            opciones={opcionesDeConceptos(catalogos.conceptos)}
             disabled={!editable}
             className={`${campo} ${falta(c.concepto_id == null)}`}
             onGuardar={(v) => onGuardar(c.id, { concepto_id: num(v) })}
@@ -474,6 +463,12 @@ function Formulario({
         <p className={`flex gap-2 rounded-control px-3 py-2 text-[13px] ${repetido ? "bg-warning-soft text-warning-strong" : "bg-success-soft text-success-strong"}`}>
           {!repetido && <IconoCheck className="mt-0.5 h-4 w-4 shrink-0" />}
           {repetido ? "Este comprobante (RUC y número) ya está en otra rendición." : "No está registrado en otra rendición."}
+        </p>
+      )}
+
+      {e.clave === "fuera" && (
+        <p className="rounded-control bg-warning-soft px-3 py-2 text-[13px] text-warning-strong">
+          La fecha cae fuera del viaje. {e.detalle}. Si el gasto es del viaje (por ejemplo, el taxi de la víspera), déjalo así.
         </p>
       )}
 

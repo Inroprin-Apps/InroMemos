@@ -76,5 +76,18 @@ export function cuentas(filas: FilaParaCuentas[], monto: number | string, noSust
   };
 }
 
+/** Cuánto se gastó en cada proyecto (soles; lo descartado y los dólares no suman). Lo más grande primero. */
+export function porProyecto(filas: (FilaParaCuentas & { proyecto_id: number | null })[]): { proyecto_id: number | null; cuantos: number; importe: number }[] {
+  const grupos = new Map<number | null, { proyecto_id: number | null; cuantos: number; importe: number }>();
+  for (const f of filas) {
+    if (f.descartado || f.moneda === "USD") continue;
+    const g = grupos.get(f.proyecto_id) ?? { proyecto_id: f.proyecto_id, cuantos: 0, importe: 0 };
+    g.cuantos += 1;
+    g.importe = centimos(g.importe + aNumero(f.total));
+    grupos.set(f.proyecto_id, g);
+  }
+  return [...grupos.values()].sort((a, b) => b.importe - a.importe);
+}
+
 export const soles = (n: number | string | null | undefined) =>
   `S/ ${aNumero(n).toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

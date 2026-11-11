@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { tipoCorto } from "@/lib/comprobante";
 import { aNumero, soles, type cuentas } from "@/lib/cuentas";
 import type { cambiarRendicion } from "@/lib/datos";
+import { periodoViaje } from "@/lib/memo-reglas";
 import { tituloRendicion } from "@/lib/rendiciones";
 import type { Caja, Catalogos, Rendicion } from "@/lib/tipos";
 import { Estado } from "../piezas";
@@ -41,6 +42,7 @@ export function Resumen({
   responsable,
   catalogos,
   c,
+  porProyecto,
   editable,
   intento,
   onGuardar,
@@ -50,6 +52,8 @@ export function Resumen({
   responsable: string;
   catalogos: Catalogos;
   c: Cuentas;
+  /** Cuánto se gastó en cada proyecto, el mayor primero. */
+  porProyecto: { proyecto_id: number | null; cuantos: number; importe: number }[];
   editable: boolean;
   intento: number;
   onGuardar: (cambios: CambiosRendicion) => void;
@@ -95,6 +99,7 @@ export function Resumen({
         ) : (
           <span className="font-semibold">{new Date(`${r.fecha_solicitud}T00:00`).toLocaleDateString("es-PE")}</span>
         )}
+        {(r.entrega?.viaje_desde || r.entrega?.viaje_hasta) && <span className="block text-xs text-ink-3">Viaje: {periodoViaje(r.entrega.viaje_desde, r.entrega.viaje_hasta)}</span>}
       </Dato>
       <Dato titulo="Empresa" className={plegable}>
         <span className="font-semibold">{empresa}</span>
@@ -179,6 +184,21 @@ export function Resumen({
           </div>
         )}
       </div>
+
+      {/* En qué proyectos se gastó: lo que administración mira primero cuando un viaje cubre más de uno. */}
+      {porProyecto.length > 1 && (
+        <div className="col-span-full flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-line pt-3 text-[13px]">
+          <span className="text-xs text-ink-3">Por proyecto:</span>
+          {porProyecto.map((p) => (
+            <span key={p.proyecto_id ?? "sin"} className="whitespace-nowrap">
+              <span className={p.proyecto_id == null ? "text-warning-strong" : "text-ink-2"}>
+                {p.proyecto_id == null ? "Sin proyecto" : (catalogos.proyectos.find((x) => x.id === p.proyecto_id)?.nombre ?? "—")}
+              </span>{" "}
+              <b className="font-semibold tabular-nums text-ink">{soles(p.importe)}</b>
+            </span>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

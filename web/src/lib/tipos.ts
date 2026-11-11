@@ -58,7 +58,11 @@ export type Rendicion = {
   enviada_en: string | null;
   creado_en: string;
   actualizado_en: string;
+  /** La línea del memo de entrega (si la rendición salió de uno): las fechas del viaje y su proyecto. */
+  entrega?: Entrega | null;
 };
+
+export type Entrega = { viaje_desde: string | null; viaje_hasta: string | null; proyecto_id: number | null };
 
 export type Caja = {
   id: number;
@@ -71,13 +75,15 @@ export type Caja = {
 };
 
 export type Catalogo = { id: number; nombre: string; activo: boolean };
+/** Un proyecto propuesto por quien rinde espera que administración lo confirme (confirmado = false). */
+export type Proyecto = Catalogo & { confirmado?: boolean; propuesto_por?: string | null };
 export type TipoComprobante = { id: string; nombre: string; sustenta: boolean; orden: number; activo: boolean };
 export type Concepto = Catalogo & { categoria: string; subcategoria: string };
 
 export type Catalogos = {
   empresas: Catalogo[];
   areas: Catalogo[];
-  proyectos: Catalogo[];
+  proyectos: Proyecto[];
   tipos: TipoComprobante[];
   conceptos: Concepto[];
 };

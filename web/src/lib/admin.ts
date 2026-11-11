@@ -58,6 +58,24 @@ export async function crearEnCatalogo(tabla: TablaCatalogo, fila: Record<string,
   exigir(await supabase().from(tabla).insert(fila).select("id").single());
 }
 
+/**
+ * Varios de una vez (pegados de una lista): entra lo que no estaba y se dice
+ * cuántos ya existían. Para proyectos, áreas y empresas, que solo llevan nombre.
+ */
+export async function crearVariosEnCatalogo(
+  tabla: "proyectos" | "areas" | "empresas",
+  nombres: string[],
+  existentes: string[],
+): Promise<{ agregados: number; repetidos: number }> {
+  const ya = new Set(existentes.map((n) => n.toUpperCase()));
+  const nuevos = [...new Set(nombres)].filter((n) => !ya.has(n));
+  if (nuevos.length) {
+    const r = await supabase().from(tabla).insert(nuevos.map((nombre) => ({ nombre })));
+    if (r.error) throw new FallaDeBase(r.error as never);
+  }
+  return { agregados: nuevos.length, repetidos: nombres.length - nuevos.length };
+}
+
 export async function cambiarEnCatalogo(tabla: TablaCatalogo, id: number | string, cambios: Record<string, unknown>): Promise<void> {
   exigir(await supabase().from(tabla).update(cambios).eq("id", id).select("id").single());
 }

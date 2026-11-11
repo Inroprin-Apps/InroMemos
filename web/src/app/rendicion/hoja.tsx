@@ -1,26 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
-import { estadoFila, numeroCompleto, partirNumero, tipoCorto, type EstadoFila } from "@/lib/comprobante";
+import { useMemo, useState, type ReactNode } from "react";
+import { estadoFila, numeroCompleto, partirNumero, tipoCorto, type EstadoFila, type Viaje } from "@/lib/comprobante";
 import { aNumero, soles } from "@/lib/cuentas";
 import type { CambiosComprobante } from "@/lib/datos";
 import type { Archivo, Catalogos, Comprobante } from "@/lib/tipos";
 import { IconoBuscar } from "../iconos";
 import { Pestanita } from "../mis-rendiciones";
-import { Lista, Miniatura, Texto, celda, celdaChica, celdaFalta, useEnlaces } from "./celdas";
+import { Lista, ListaProyecto, Miniatura, TONOS_FILA as TONOS, Texto, celda, celdaChica, celdaFalta, opcionesDeConceptos, useEnlaces, type Opcion } from "./celdas";
 
 type Filtro = "todos" | "revisar" | "leyendo" | "descartados";
-
-const TONOS: Record<EstadoFila["clave"], string> = {
-  listo: "text-success-strong",
-  leyendo: "text-primary-strong",
-  falta: "text-warning-strong",
-  repetido: "text-warning-strong",
-  fallido: "text-danger-strong",
-  observado: "text-danger-strong",
-  descartado: "text-ink-3",
-};
 
 export function Hoja({
   rendicionId,
@@ -28,6 +18,7 @@ export function Hoja({
   archivos,
   repetidos,
   catalogos,
+  viaje,
   editable,
   intento,
   herramientas,
@@ -39,6 +30,8 @@ export function Hoja({
   filas: Comprobante[];
   archivos: Archivo[];
   repetidos: Map<string, string>;
+  /** Las fechas del viaje, si la rendición salió de una entrega de viáticos. */
+  viaje?: Viaje | null;
   catalogos: Catalogos;
   editable: boolean;
   intento: number;
@@ -53,8 +46,11 @@ export function Hoja({
   const [elegidas, setElegidas] = useState<Set<string>>(new Set());
   const enlaces = useEnlaces(archivos);
 
-  const archivoDe = (c: Comprobante) => archivos.find((a) => a.id === c.archivo_id);
-  const conEstado = filas.map((c) => ({ c, e: estadoFila(c, archivoDe(c), repetidos.has(c.id)) }));
+  const porId = useMemo(() => new Map(archivos.map((a) => [a.id, a])), [archivos]);
+  const archivoDe = (c: Comprobante) => (c.archivo_id ? porId.get(c.archivo_id) : undefined);
+  const conEstado = filas.map((c) => ({ c, e: estadoFila(c, archivoDe(c), repetidos.has(c.id), viaje) }));
+  // Los conceptos, agrupados por categoría: se arman una vez, no por fila.
+  const conceptos = useMemo(() => opcionesDeConceptos(catalogos.conceptos), [catalogos.conceptos]);
   const cuenta = {
     todos: conEstado.filter(({ e }) => e.clave !== "descartado").length,
     revisar: conEstado.filter(({ e }) => e.porRevisar).length,
@@ -176,6 +172,7 @@ export function Hoja({
                     archivo={archivoDe(c)}
                     enlace={enlaces[c.archivo_id ?? ""]}
                     catalogos={catalogos}
+                    conceptos={conceptos}
                     editable={editable}
                     intento={intento}
                     elegida={elegidas.has(c.id)}
@@ -212,6 +209,7 @@ export function Hoja({
                 archivo={archivoDe(c)}
                 enlace={enlaces[c.archivo_id ?? ""]}
                 catalogos={catalogos}
+                conceptos={conceptos}
                 editable={editable}
                 intento={intento}
                 onGuardar={onGuardar}
@@ -232,6 +230,7 @@ type PropsFila = {
   archivo: Archivo | undefined;
   enlace: string | undefined;
   catalogos: Catalogos;
+  conceptos: Opcion[];
   editable: boolean;
   intento: number;
   onGuardar: (id: string, cambios: CambiosComprobante) => void;
@@ -239,7 +238,7 @@ type PropsFila = {
 };
 
 /** Los campos de una fila, compartidos entre la tabla y la tarjeta del teléfono. */
-function campos({ c, e, catalogos, editable, intento, onGuardar }: PropsFila) {
+function campos({ c, e, catalogos, conceptos, editable, intento, onGuardar }: PropsFila) {
   const puede = editable && e.clave !== "descartado";
   const k = (campo: string, valor: unknown) => `${c.id}-${campo}-${String(valor)}-${intento}`;
   const num = (v: string) => (v ? Number(v) : null);
@@ -297,14 +296,12 @@ function campos({ c, e, catalogos, editable, intento, onGuardar }: PropsFila) {
       />
     ),
     proyecto: (
-      <Lista
+      <ListaProyecto
         valor={c.proyecto_id}
-        etiqueta="Proyecto"
-        opciones={catalogos.proyectos}
+        proyectos={catalogos.proyectos}
         disabled={!puede}
         className={`${celda} ${marca(c.proyecto_id == null)}`}
-        vacio="Elegir…"
-        onGuardar={(v) => onGuardar(c.id, { proyecto_id: num(v) })}
+        onGuardar={(id) => onGuardar(c.id, { proyecto_id: id })}
       />
     ),
     area: (
@@ -325,7 +322,7 @@ function campos({ c, e, catalogos, editable, intento, onGuardar }: PropsFila) {
       <Lista
         valor={c.concepto_id}
         etiqueta="Concepto"
-        opciones={catalogos.conceptos}
+        opciones={conceptos}
         disabled={!puede}
         className={`${celda} ${marca(c.concepto_id == null)}`}
         vacio="Concepto…"
@@ -498,13 +495,17 @@ function AccionesEnBloque({
       </select>
       <select aria-label="Asignar concepto" className={control} value="" onChange={(e) => e.target.value && onAplicar({ concepto_id: Number(e.target.value) })}>
         <option value="">Asignar concepto…</option>
-        {catalogos.conceptos
-          .filter((c) => c.activo)
-          .map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nombre}
-            </option>
-          ))}
+        {[...new Set(catalogos.conceptos.filter((c) => c.activo).map((c) => c.categoria))].sort().map((g) => (
+          <optgroup key={g} label={g}>
+            {catalogos.conceptos
+              .filter((c) => c.activo && c.categoria === g)
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+          </optgroup>
+        ))}
       </select>
       <span className="flex flex-wrap items-center gap-1.5">
         <select aria-label="Área para lo elegido" className={control} value={area} onChange={(e) => setArea(e.target.value)}>

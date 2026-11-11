@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { estadoFila, faltan, herencia, numeroCompleto, partirNumero, tipoCorto } from "./comprobante";
+import { estadoFila, faltan, fueraDelViaje, herencia, numeroCompleto, partirNumero, tipoCorto } from "./comprobante";
 
 describe("número de comprobante", () => {
   it("separa serie y número, conservando lo que se tecleó", () => {
@@ -97,5 +97,30 @@ describe("estado de una fila", () => {
     expect(tipoCorto("FACTURA")).toBe("Factura");
     expect(tipoCorto(null)).toBe("Sin tipo");
     expect(tipoCorto("NUEVO", "NUEVO TIPO")).toBe("NUEVO TIPO");
+  });
+});
+
+describe("entrega de viáticos: el viaje y su proyecto", () => {
+  const viaje = { viaje_desde: "2026-11-03", viaje_hasta: "2026-11-08" };
+  const fila = { fecha: "2026-11-05", tipo_comprobante_id: "BOLETA", numero: "1", total: 10, proyecto_id: 1, concepto_id: 1, descartado: false };
+
+  it("un comprobante dentro del viaje está listo; uno de antes o después, se avisa sin bloquear", () => {
+    expect(estadoFila(fila, undefined, false, viaje).clave).toBe("listo");
+    const tarde = estadoFila({ ...fila, fecha: "2026-11-10" }, undefined, false, viaje);
+    expect([tarde.clave, tarde.texto, tarde.detalle, tarde.porRevisar]).toEqual(["fuera", "Fuera del viaje", "El viaje fue del 03/11 al 08/11", true]);
+    expect(faltan({ ...fila, fecha: "2026-11-10" })).toEqual([]);
+  });
+
+  it("sin fechas de viaje (caja chica o memo en Word) no hay nada que avisar", () => {
+    expect(fueraDelViaje("2026-01-01", null)).toBe(false);
+    expect(fueraDelViaje("2026-01-01", { viaje_desde: null, viaje_hasta: null })).toBe(false);
+    expect(fueraDelViaje("2026-11-02", { viaje_desde: "2026-11-03", viaje_hasta: null })).toBe(true);
+  });
+
+  it("la primera fila arranca con el proyecto del memo de entrega; después manda la última fila", () => {
+    const yo = { nombre: "Ana", area_id: 3 };
+    expect(herencia([], "memo", yo, 7).proyecto_id).toBe(7);
+    expect(herencia([{ proyecto_id: 2, area_id: 3, solicitante: "Ana", descartado: false }], "memo", yo, 7).proyecto_id).toBe(2);
+    expect(herencia([], "memo", yo).proyecto_id).toBeNull();
   });
 });

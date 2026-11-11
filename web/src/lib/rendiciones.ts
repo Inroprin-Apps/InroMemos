@@ -54,10 +54,41 @@ export function recargarRendiciones(): Promise<void> {
   return enCurso;
 }
 
+// Lo que cambia administración (aprobó, observó) llega sin recargar la página:
+// al volver a la pestaña y cada dos minutos mientras se mira. Nunca más de una
+// lectura cada 15 segundos.
+const CADA = 120_000;
+const MINIMO = 15_000;
+let leidoEn = 0;
+let reloj: ReturnType<typeof setInterval> | null = null;
+
+function refrescarSiToca() {
+  if (document.visibilityState === "visible" && navigator.onLine && !enCurso && Date.now() - leidoEn >= MINIMO) {
+    leidoEn = Date.now();
+    recargarRendiciones();
+  }
+}
+
 function suscribir(f: () => void) {
   oyentes.add(f);
-  if (!actual.rendiciones && !enCurso) recargarRendiciones();
-  return () => oyentes.delete(f);
+  if (!actual.rendiciones && !enCurso) {
+    leidoEn = Date.now();
+    recargarRendiciones();
+  }
+  if (oyentes.size === 1) {
+    document.addEventListener("visibilitychange", refrescarSiToca);
+    window.addEventListener("focus", refrescarSiToca);
+    reloj = setInterval(refrescarSiToca, CADA);
+  }
+  return () => {
+    oyentes.delete(f);
+    if (oyentes.size === 0) {
+      document.removeEventListener("visibilitychange", refrescarSiToca);
+      window.removeEventListener("focus", refrescarSiToca);
+      if (reloj) clearInterval(reloj);
+      reloj = null;
+    }
+  };
 }
 
 const sinDatos: Estado = { rendiciones: null, error: null };

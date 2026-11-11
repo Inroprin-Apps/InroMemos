@@ -161,6 +161,14 @@ Quedó abierto en la prueba:
 - **Para conversar con Franco:** «Ver como», Análisis y Registro en el detalle, vistas y descargas, motivos de observaciones, auditoría de correlativos y «Legajos y archivo».
 - **Funciones de INROMEMOS** (Áreas y permisos), con la etiqueta morada «Nuevo · INROMEMOS»: segundo control de pagos (encendido), cuenta verificada antes de pagar (encendido), Solicitar memo (apagado) y entrega de viáticos (encendido). Apagadas, la plataforma funciona como en el diseño original.
 
+## 5e. Rendiciones más ágiles (11-nov-2026)
+
+- **Proyectos:** si el proyecto no está en la lista, quien rinde lo propone desde la misma fila («＋ No está en la lista…») y sigue. Queda **por confirmar**; administración lo confirma, corrige o desactiva en *Catálogos*. Los memos solo ofrecen proyectos confirmados. Máximo 5 propuestas pendientes por persona.
+- **Catálogos:** «Agregar varios…» (pegar una lista, sin duplicar), buscador y los proyectos por confirmar arriba.
+- **Menos llenado:** conceptos agrupados por categoría; al escribir el RUC, el proveedor sale del padrón de SUNAT; la primera fila de una entrega de viáticos arranca con el proyecto del memo.
+- **Control del viaje:** la rendición muestra las fechas del viaje y avisa (sin bloquear) los comprobantes de fuera de esas fechas.
+- **Resumen por proyecto** cuando el gasto cae en más de uno, y la lista de rendiciones se actualiza sola al volver a la pestaña.
+
 ## 6. Lo que sigue
 
 | # | Qué | Depende de |
