@@ -7,7 +7,7 @@ import type { Persona } from "@/lib/sesion";
 import { IconoBuscar } from "../../iconos";
 import { ConSesion } from "../../marco";
 import { Aviso, botonPrincipal, campo } from "../../piezas";
-import { AvisoCorte, Encabezado, Tarjeta } from "../piezas-memo";
+import { AvisoCorte, ChipPropuesta, Encabezado, Tarjeta } from "../piezas-memo";
 
 export function EmitirMemo() {
   return <ConSesion activo="emitir">{(persona) => <Contenido persona={persona} />}</ConSesion>;
@@ -78,7 +78,7 @@ function Contenido({ persona }: { persona: Persona }) {
         descripcion="Solo lo esencial: el área, qué tipo de memo es y, después, qué quieres decir. El número, la fecha y el papel salen solos."
       />
 
-      <Tarjeta titulo="1 · Quién emite" nota="Tomado de tu sesión">
+      <Tarjeta paso={1} titulo="Quién emite" nota="Tomado de tu sesión">
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3">De (emisor)</p>
@@ -106,7 +106,7 @@ function Contenido({ persona }: { persona: Persona }) {
         )}
       </Tarjeta>
 
-      <Tarjeta titulo="2 · Qué tipo de memo es" nota={`${catalogos.tipos.length} tipos, agrupados por cómo se comportan`}>
+      <Tarjeta paso={2} titulo="¿Qué quieres decir? Primero, el tipo de memo" nota={`${catalogos.tipos.length} tipos, agrupados por cómo se comportan`}>
         <label className="relative mb-3 block">
           <span className="sr-only">Buscar tipo</span>
           <IconoBuscar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-3" />
@@ -136,7 +136,11 @@ function Contenido({ persona }: { persona: Persona }) {
                       }`}
                     >
                       {x.nombre}
-                      {!x.confirmado && <span className={tipo === x.codigo ? "" : "text-ink-3"}> · propuesto</span>}
+                      {x.propuesto_inromemos ? (
+                        <ChipPropuesta className="ml-1.5" />
+                      ) : (
+                        !x.confirmado && <span className={tipo === x.codigo ? "" : "text-ink-3"}> · propuesto</span>
+                      )}
                     </button>
                   ))}
               </div>

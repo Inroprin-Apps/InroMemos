@@ -293,7 +293,7 @@ function Avance({ hechos, total }: { hechos: number; total: number }) {
   );
 }
 
-function LineaDeTiempo({ pasos }: { pasos: Paso[] }) {
+export function LineaDeTiempo({ pasos }: { pasos: Paso[] }) {
   const hoyEn = pasos.findIndex((p) => p.estado === "siguiente" || p.estado === "pendiente");
   return (
     <ol className="relative">

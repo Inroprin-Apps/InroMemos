@@ -64,6 +64,11 @@
   --color-success-strong: var(--color-teal-strong);
   --color-success-soft: var(--color-teal-soft);
 
+  /* Reservado: lo que propuso INROMEMOS y Franco todavía no confirma
+     (etiqueta «Nuevo · INROMEMOS»). No es un estado: no se usa para nada más. */
+  --color-propuesta: #6a4c9c;
+  --color-propuesta-soft: #f3eff9;
+
   /* Esquinas. No «s», «m», «l»: rounded-l y rounded-s ya son de Tailwind. */
   --radius-card: 12px;
   --radius-button-lg: 10px;

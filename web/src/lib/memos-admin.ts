@@ -45,6 +45,16 @@ export async function guardarUnidad(
   revisar(await supabase().from("unidades").update(cambios).eq("id", id));
 }
 
+/** Encender o apagar una función de INROMEMOS (solo administración). */
+export async function guardarParametros(cambios: { segundo_control_pagos?: boolean; cuenta_verificada_para_pagar?: boolean; solicitar_memo?: boolean }) {
+  revisar(await supabase().from("parametros_memo").update(cambios).eq("id", 1));
+}
+
+/** Activar o desactivar un tipo de memo (por ejemplo, la entrega de viáticos). */
+export async function activarTipo(codigo: string, activo: boolean) {
+  revisar(await supabase().from("tipos_memo").update({ activo }).eq("codigo", codigo));
+}
+
 export async function guardarSemilla(unidadId: number, anio: number, ultimo: number) {
   revisar(await supabase().from("correlativos").upsert({ unidad_id: unidadId, anio, ultimo }));
 }

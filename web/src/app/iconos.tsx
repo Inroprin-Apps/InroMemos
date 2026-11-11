@@ -160,3 +160,34 @@ export const IconoSobre = (p: Props) => (
     <path d="M5.5 5h13l3.5 7v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z" />
   </Trazo>
 );
+export const IconoOjo = (p: Props) => (
+  <Trazo {...p}>
+    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+    <circle cx="12" cy="12" r="3" />
+  </Trazo>
+);
+export const IconoCarpeta = (p: Props) => (
+  <Trazo {...p}>
+    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+  </Trazo>
+);
+export const IconoSincronizar = (p: Props) => (
+  <Trazo {...p}>
+    <path d="M20 11a8 8 0 0 0-14.3-4.9L4 8" />
+    <path d="M4 4v4h4" />
+    <path d="M4 13a8 8 0 0 0 14.3 4.9L20 16" />
+    <path d="M20 20v-4h-4" />
+  </Trazo>
+);
+export const IconoPulso = (p: Props) => (
+  <Trazo {...p}>
+    <path d="M3 12h4l2-5 4 10 2-5h6" />
+  </Trazo>
+);
+export const IconoPago = (p: Props) => (
+  <Trazo {...p}>
+    <rect x="3" y="6" width="18" height="12" rx="2" />
+    <path d="M3 10h18" />
+    <path d="M7 15h3" />
+  </Trazo>
+);

@@ -39,7 +39,17 @@ export type TipoMemo = {
   pasa_analisis: boolean;
   confidencialidad: Confidencialidad;
   confirmado: boolean;
+  /** Lo propuso INROMEMOS: no está en la hoja de configuración de Franco. */
+  propuesto_inromemos: boolean;
   activo: boolean;
+};
+
+/** Parámetros generales y las funciones que administración enciende o apaga. */
+export type ParametrosMemo = {
+  meta_atencion_horas: number;
+  segundo_control_pagos: boolean;
+  cuenta_verificada_para_pagar: boolean;
+  solicitar_memo: boolean;
 };
 
 export type Sustento = {
@@ -160,17 +170,19 @@ export type CatalogosMemo = {
   empresas: { id: number; nombre: string; codigo: string | null; activo: boolean }[];
   proyectos: { id: number; nombre: string; activo: boolean }[];
   conceptos: { id: number; nombre: string; activo: boolean }[];
+  parametros: ParametrosMemo;
 };
 
 export async function leerCatalogosMemo(): Promise<CatalogosMemo> {
   const db = supabase();
-  const [unidades, tipos, sustentos, empresas, proyectos, conceptos] = await Promise.all([
+  const [unidades, tipos, sustentos, empresas, proyectos, conceptos, parametros] = await Promise.all([
     db.from("unidades").select("*, empresa:empresas(nombre, codigo)").order("empresa_id").order("codigo"),
     db.from("tipos_memo").select("*").order("familia").order("nombre"),
     db.from("sustentos_tipo").select("id, tipo_codigo, documento, nivel, condicion, umbral").eq("activo", true),
     db.from("empresas").select("id, nombre, codigo, activo").order("nombre"),
     db.from("proyectos").select("id, nombre, activo").order("nombre"),
     db.from("conceptos").select("id, nombre, activo").order("nombre"),
+    db.from("parametros_memo").select("meta_atencion_horas, segundo_control_pagos, cuenta_verificada_para_pagar, solicitar_memo").maybeSingle(),
   ]);
   return {
     unidades: exigir(unidades) as Unidad[],
@@ -179,6 +191,12 @@ export async function leerCatalogosMemo(): Promise<CatalogosMemo> {
     empresas: exigir(empresas),
     proyectos: exigir(proyectos),
     conceptos: exigir(conceptos),
+    parametros: (parametros.data as ParametrosMemo | null) ?? {
+      meta_atencion_horas: 3,
+      segundo_control_pagos: true,
+      cuenta_verificada_para_pagar: true,
+      solicitar_memo: false,
+    },
   };
 }
 
@@ -241,6 +259,9 @@ async function leerTodos(): Promise<Memo[]> {
 }
 
 let leidoEn = 0;
+
+/** Cuándo se pidió la lista por última vez (para «Sincronizado hace…»). */
+export const memosLeidosEn = () => leidoEn;
 
 export function recargarMemos(): Promise<void> {
   leidoEn = Date.now();
