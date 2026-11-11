@@ -712,6 +712,11 @@ function NavInferior({
             <IconoMas className="h-5.5 w-5.5" />
             Nueva
           </button>
+          {/* En el teléfono no hay menú lateral: pedir viáticos va aquí abajo. */}
+          <button type="button" onClick={() => onSolicitar("rendiciones")} className={item(false)}>
+            <IconoEnviar className="h-5.5 w-5.5" />
+            Viáticos
+          </button>
         </>
       )}
       {enCola > 0 && (
