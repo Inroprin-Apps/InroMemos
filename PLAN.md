@@ -58,7 +58,7 @@ regla de que **el servidor decide; la pantalla solo muestra**.
 - Unidades emisoras (empresa + área), personas por correo, interárea, KPIs.
 - Memos con serie **empresa + área + año** (`029-2026-FINANZAS`, técnico `INR|029-2026-FINANZAS`), que nunca se repite ni retrocede; anulado conserva su número.
 - Estados: borrador → pendiente → aprobado → (enviado) → recibido; observado vuelve con el mismo número y versión +1; anulado es final. Solo cambian por `emitir_memo`, `aprobar_memo`, `observar_memo`, `anular_memo` y `dar_cargo`.
-- Aprobación: jefe o suplente del área, nunca el propio emisor; si emite el jefe o el área no exige aprobación, se aprueba al emitir. Sello con código (`7F3A-91C2`).
+- Aprobación: jefe o suplente del área, nunca el propio emisor; si el área no exige aprobación, o emite el jefe un memo **sin pago**, se aprueba al emitir. Un memo **con pago** siempre lo aprueba otra persona (el suplente, el jefe o, si no hay, administración). Un memo con una cuenta nueva o distinta no pasa a InroPay hasta que quien verifica cuentas la apruebe; si la rechaza, vuelve al emisor como observado. Sello con código (`7F3A-91C2`).
 - Visibilidad: cada área lo suyo; restringido sin interárea; confidencial (planilla) solo participantes, jefe y administración.
 - Líneas de pago (los 17 campos de InroPay): RUC con dígito verificador, comprobante normalizado, duplicados contra todos los memos, **la cuenta solo enmascarada** (la base rechaza una completa), agrupar desde 15 personas, monedas.
 - `revisar_memo()`: todo lo que falta, en palabras, antes de enviar.

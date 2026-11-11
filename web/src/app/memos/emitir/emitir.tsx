@@ -100,7 +100,7 @@ function Contenido({ persona }: { persona: Persona }) {
           <p className="mt-3 rounded-row bg-primary-soft px-3 py-2 text-[13px] text-primary-strong">
             El número lo asigna la base al enviar (serie {u.empresa?.codigo ?? "—"} · {u.codigo}); nadie lo escribe ni lo repite.
             {u.requiere_aprobacion
-              ? " Esta área exige aprobación del jefe o suplente."
+              ? " Esta área exige aprobación del jefe o suplente. Los memos con pago siempre los aprueba otra persona: nadie se aprueba sus propios pagos."
               : " Esta área no exige aprobación: se aprueba al emitir."}
           </p>
         )}

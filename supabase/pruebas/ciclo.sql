@@ -287,5 +287,76 @@ select pruebas.ok((select estado = 'rechazada' and motivo_rechazo like 'Eso va%'
   'la jefatura la rechaza con su motivo');
 select pruebas.falla(format($$select rechazar_solicitud(%L, 'Ya no corresponde')$$, :'sol3'), 'una cancelada ya no se rechaza');
 
+\echo '\n· Pagos con segundo control: nadie se aprueba sus pagos'
+
+reset role; select pruebas.como('jefa@inroprin.com');
+insert into memos (unidad_id, tipo_codigo, asunto, cuerpo, destinatario_correo)
+values (:finanzas, 'RR-VIA', 'Pago que emite la jefa', 'Texto', 'dora@inroprin.com') returning id as pj \gset
+insert into lineas_pago (memo_id, empresa_pagadora_id, beneficiario_doc, beneficiario, concepto_id, monto)
+values (:'pj', :inroprin, '45678913', 'Dora Destino', :concepto, 80);
+select emitir_memo(:'pj');
+select pruebas.ok((select estado = 'pendiente' and aprobado_por is null from memos where id = :'pj'),
+  'un pago que emite la jefa no sale aprobado: espera a otra persona');
+select pruebas.falla(format($$select aprobar_memo(%L)$$, :'pj'), 'y ella no se lo aprueba');
+reset role;
+select pruebas.ok((select para = '{carla@inroprin.com}' from avisos where memo_id = :'pj' and tipo = 'por_aprobar'),
+  'sin suplente, el aviso por aprobar va a administración, no a la jefa');
+reset role; select pruebas.como('carla@inroprin.com');
+select aprobar_memo(:'pj');
+select pruebas.ok((select estado = 'aprobado' from memos where id = :'pj'), 'y administración lo aprueba');
+
+update unidades set suplente_correo = 'emi@inroprin.com' where id = :finanzas;
+reset role; select pruebas.como('jefa@inroprin.com');
+insert into memos (unidad_id, tipo_codigo, asunto, cuerpo, destinatario_correo)
+values (:finanzas, 'RR-VIA', 'Otro pago de la jefa', 'Texto', 'dora@inroprin.com') returning id as pj2 \gset
+insert into lineas_pago (memo_id, empresa_pagadora_id, beneficiario_doc, beneficiario, concepto_id, monto)
+values (:'pj2', :inroprin, '45678913', 'Dora Destino', :concepto, 90);
+select emitir_memo(:'pj2');
+reset role;
+select pruebas.ok((select para = '{emi@inroprin.com}' from avisos where memo_id = :'pj2' and tipo = 'por_aprobar'),
+  'con suplente, el aviso va al suplente');
+reset role; select pruebas.como('emi@inroprin.com');
+select aprobar_memo(:'pj2');
+select pruebas.ok((select estado = 'aprobado' and aprobado_por = :'emi' from memos where id = :'pj2'), 'y el suplente lo aprueba');
+
+reset role; select pruebas.como('jefa@inroprin.com');
+insert into memos (unidad_id, tipo_codigo, asunto, cuerpo, destinatario_correo)
+values (:finanzas, 'IN-COM', 'Comunicado de la jefa', 'Texto', 'dora@inroprin.com') returning id as cj \gset
+select emitir_memo(:'cj');
+select pruebas.ok((select estado = 'aprobado' from memos where id = :'cj'), 'un memo sin pago de la jefa sigue saliendo aprobado');
+
+reset role; select pruebas.como('carla@inroprin.com');
+update unidades set suplente_correo = null where id = :finanzas;
+
+\echo '\n· Pagos con segundo control: cuenta sin verificar no pasa a InroPay'
+
+reset role; select pruebas.como_sistema();
+insert into cuentas_bancarias (base, identificador, titular, banco, cuenta, huella_cuenta, estado, motivo)
+values ('PLATAFORMA', '45678913', 'Dora Destino', 'BCP', '••••1111', repeat('b', 64), 'pendiente', 'discrepancia')
+returning id as cuenta_b \gset
+update lineas_pago set huella_cuenta = repeat('b', 64), estado_cuenta = 'distinta' where memo_id = :'pj';
+select pruebas.ok((select count(*) = 0 from cola_inropay where memo_id = :'pj'),
+  'un memo aprobado con una cuenta distinta no entra a la cola de InroPay');
+select pruebas.ok((select count(*) >= 1 from cola_inropay where memo_id = :'pj2'), 'el que tiene sus cuentas en orden sí');
+reset role; select pruebas.como('ana@inroprin.com');
+select decidir_cuenta(:'cuenta_b', true);
+reset role; select pruebas.como_sistema();
+select pruebas.ok((select count(*) >= 1 from cola_inropay where memo_id = :'pj'), 'verificada la cuenta, entra sola a la cola');
+
+insert into cuentas_bancarias (base, identificador, titular, banco, cuenta, huella_cuenta, estado, motivo)
+values ('PLATAFORMA', '45678913', 'Dora Destino', 'BCP', '••••2222', repeat('c', 64), 'pendiente', 'discrepancia')
+returning id as cuenta_c \gset
+update lineas_pago set huella_cuenta = repeat('c', 64), estado_cuenta = 'pendiente' where memo_id = :'pj2';
+select pruebas.ok((select count(*) = 0 from cola_inropay where memo_id = :'pj2'), 'una cuenta nueva tampoco pasa');
+reset role; select pruebas.como('ana@inroprin.com');
+select decidir_cuenta(:'cuenta_c', false);
+reset role;
+select pruebas.ok((select estado = 'observado' and ultima_observacion like '%rechazó la cuenta de Dora Destino%' from memos where id = :'pj2'),
+  'si el verificador la rechaza, el memo vuelve a quien lo emitió para corregir la cuenta');
+select pruebas.ok((select count(*) = 0 from cola_inropay where memo_id = :'pj2'), 'y no pasa a pagos');
+select pruebas.ok((select count(*) >= 1 from avisos where memo_id = :'pj2' and tipo = 'observado' and para = '{jefa@inroprin.com}'),
+  'quien lo emitió recibe el aviso');
+select pruebas.ok((select estado = 'aprobado' from memos where id = :'pj'), 'los memos con la cuenta buena no se tocan');
+
 reset role;
 \echo '\nCiclo en orden\n'
