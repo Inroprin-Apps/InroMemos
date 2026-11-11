@@ -94,9 +94,9 @@ export async function cancelarSolicitud(id: string): Promise<void> {
   await recargarSolicitudes();
 }
 
-export const ESTADOS_SOLICITUD: Record<EstadoSolicitud, { texto: string; clase: string }> = {
-  pendiente: { texto: "Pendiente", clase: "bg-warning-soft text-warning-strong" },
-  aceptada: { texto: "Atendida", clase: "bg-success-soft text-success-strong" },
-  rechazada: { texto: "Rechazada", clase: "bg-danger-soft text-danger-strong" },
-  cancelada: { texto: "Cancelada", clase: "bg-surface-3 text-ink-2" },
+export const ESTADOS_SOLICITUD: Record<EstadoSolicitud, { texto: string; tono: "neutro" | "info" | "ok" | "aviso" | "peligro" }> = {
+  pendiente: { texto: "Pendiente", tono: "aviso" },
+  aceptada: { texto: "Atendida", tono: "ok" },
+  rechazada: { texto: "Rechazada", tono: "peligro" },
+  cancelada: { texto: "Cancelada", tono: "neutro" },
 };

@@ -149,7 +149,7 @@ function Contenido({ persona }: { persona: Persona }) {
           {tipos.length === 0 && <p className="text-[13px] text-ink-3">Ningún tipo coincide. Prueba con otra palabra, o elige «Otros / no catalogado».</p>}
         </div>
         {t && (
-          <p className="mt-3 rounded-row bg-teal-soft px-3 py-2 text-[13px] text-teal-strong">
+          <p className="mt-3 rounded-row border border-line bg-surface-2 px-3 py-2 text-[13px] text-ink-2">
             <b className="font-semibold">
               {t.nombre} · {t.codigo}
             </b>

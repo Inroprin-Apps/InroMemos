@@ -11,6 +11,7 @@ import {
   type MemoSustento,
 } from "@/lib/memos";
 import { IconoSubir } from "../../iconos";
+import { Etiqueta } from "../../piezas";
 import { Tarjeta } from "../piezas-memo";
 
 const ACEPTA = ".pdf,.jpg,.jpeg,.png,.webp,.xlsx,.xls,.docx";
@@ -136,19 +137,9 @@ function Fila({
     <li className="rounded-row border border-line px-3 py-2.5">
       <div className="flex flex-wrap items-center gap-2">
         {nivel && (
-          <span
-            className={`rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${
-              nivel === "obligatorio"
-                ? falta
-                  ? "bg-danger-soft text-danger-strong"
-                  : "bg-success-soft text-success-strong"
-                : nivel === "condicional"
-                  ? "bg-warning-soft text-warning-strong"
-                  : "bg-surface-3 text-ink-2"
-            }`}
-          >
+          <Etiqueta tono={nivel === "obligatorio" ? (falta ? "peligro" : "ok") : nivel === "condicional" ? "aviso" : "neutro"}>
             {nivel === "obligatorio" ? (falta ? "Falta" : "Listo") : nivel === "condicional" ? "Si aplica" : "Recomendado"}
-          </span>
+          </Etiqueta>
         )}
         <span className="text-[13.5px] font-semibold text-ink">{titulo}</span>
         {condicion && <span className="text-[12px] text-ink-3">· {condicion}</span>}

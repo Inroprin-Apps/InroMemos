@@ -22,9 +22,9 @@ import {
 import type { Persona } from "@/lib/sesion";
 import { IconoBajar, IconoBuscar, IconoCarpeta, IconoMas, IconoOjo, IconoPulso, IconoReloj, IconoSincronizar } from "../iconos";
 import { ConSesion, marcarPestanaPanel } from "../marco";
-import { Aviso, botonPrincipal, botonSecundario, campoSuelto } from "../piezas";
+import { Aviso, botonPrincipal, botonSecundario, campoSuelto, Etiqueta } from "../piezas";
 import { PanelLateral } from "./panel-lateral";
-import { ChipEstado, ChipPago, ChipPropuesta, Encabezado } from "./piezas-memo";
+import { ChipEstado, ChipPago, ChipPropuesta, Encabezado, TeToca } from "./piezas-memo";
 import { PanelSalud } from "./salud";
 
 export function PanelMemos() {
@@ -475,7 +475,7 @@ function Contenido({ persona }: { persona: Persona }) {
               {p.texto}
               <span
                 className={`rounded-full px-1.75 text-[11px] font-bold tabular-nums ${
-                  p.clave === "te-esperan" && n > 0 ? "bg-danger text-on-fill" : pestana === p.clave ? "bg-primary text-on-fill" : "bg-surface-3 text-ink-2"
+                  pestana === p.clave ? "bg-ink text-on-fill" : p.clave === "te-esperan" && n > 0 ? "bg-danger-soft text-danger-strong" : "bg-surface-3 text-ink-2"
                 }`}
               >
                 {memos ? n : "·"}
@@ -597,7 +597,8 @@ function Fila({
   const u = contexto?.catalogos.unidades.find((x) => x.id === m.unidad_id);
   const t = contexto?.catalogos.tipos.find((x) => x.codigo === m.tipo_codigo);
   const mia = espera(m, persona, contexto?.permisos ?? null);
-  const borde = abierto ? "border-l-primary bg-primary-soft/60" : vencido ? "border-l-danger" : m.estado === "pendiente" ? "border-l-warning" : "border-l-transparent";
+  // Borde fino: ámbar si espera aprobación, rojo si pasó la meta (como Franco, más discreto).
+  const borde = abierto ? "border-l-primary bg-primary-soft/40" : vencido ? "border-l-danger/70" : m.estado === "pendiente" ? "border-l-warning-strong/50" : "border-l-transparent";
   const ciclo = proximoCiclo(new Date());
   const corte = ciclo.corte.toLocaleDateString("es-PE", { weekday: "short", day: "numeric", timeZone: "America/Lima" });
 
@@ -620,7 +621,7 @@ function Fila({
       aria-selected={abierto}
       onClick={onAbrir}
       onKeyDown={(e) => e.key === "Enter" && e.target === e.currentTarget && onAbrir()}
-      className={`block cursor-pointer border-b border-l-[3px] border-b-line px-5 py-3 outline-none transition-colors duration-150 last:border-b-0 hover:bg-surface-2 focus-visible:bg-surface-2 md:table-row md:p-0 ${borde}`}
+      className={`block cursor-pointer border-b border-l-2 border-b-line px-5 py-3 outline-none transition-colors duration-150 last:border-b-0 hover:bg-surface-2 focus-visible:bg-surface-2 md:table-row md:p-0 ${borde}`}
     >
       <td className="block md:table-cell md:px-5 md:py-3 md:align-top">
         <Link href={`/memos/memo/?id=${m.id}`} onClick={(e) => e.stopPropagation()} className="font-bold tabular-nums text-primary hover:underline">
@@ -642,15 +643,11 @@ function Fila({
         {m.requiere_pago ? <span className="font-semibold text-ink">{dinero(m.total, m.moneda)}</span> : <span className="text-ink-3">Sin pago</span>}
       </td>
       <td className="block pt-1.5 md:table-cell md:py-3 md:pr-3 md:align-top">
-        <span className="flex flex-wrap gap-1.5">
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <ChipEstado estado={m.estado} />
-          {mia && (
-            <span className="inline-flex rounded-full bg-danger px-2.5 py-1 text-[12.5px] font-semibold text-on-fill">
-              {mia === "aprobar" ? "Te toca aprobar" : mia === "cargo" ? "Te toca dar cargo" : "Te toca corregir"}
-            </span>
-          )}
+          {mia && <TeToca que={mia} />}
         </span>
-        {nota && <span className={`mt-1 block text-[11.5px] ${vencido ? "font-semibold text-danger-strong" : "text-ink-3"}`}>{vencido ? `${nota} · fuera de meta` : nota}</span>}
+        {nota && <span className={`mt-1 block text-[11.5px] ${vencido ? "text-danger-strong" : "text-ink-3"}`}>{vencido ? `${nota} · fuera de meta` : nota}</span>}
       </td>
       <td className="block pt-1 md:table-cell md:py-3 md:pr-3 md:align-top">
         {!m.requiere_pago ? (
@@ -748,20 +745,20 @@ function Cifra({ etiqueta, valor, riesgo, onClick }: { etiqueta: string; valor: 
 function Corte({ entran, porAprobar }: { entran: number | null; porAprobar: number | null }) {
   const c = proximoCiclo(new Date());
   return (
-    <p className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-card border border-warning/40 bg-warning-soft px-4 py-2.5 text-[12.5px] text-warning-strong">
-      <IconoReloj className="h-4 w-4 shrink-0" />
+    <p className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-card border border-line bg-surface px-4 py-2.5 text-[12.5px] text-ink-2">
+      <IconoReloj className="h-4 w-4 shrink-0 text-warning-strong" />
       <span>
-        Próximo corte: <b>{textoCorte(c.corte)}</b> · pago el {textoDia(c.pago)}
+        Próximo corte: <b className="font-semibold text-ink">{textoCorte(c.corte)}</b> · pago el {textoDia(c.pago)}
       </span>
       {entran != null && entran > 0 && (
-        <span className="rounded-full bg-surface px-2.5 py-0.5 text-[12px] font-semibold text-success-strong">
+        <Etiqueta tono="ok">
           {entran} {entran === 1 ? "memo entra" : "memos entran"} a tiempo
-        </span>
+        </Etiqueta>
       )}
       {porAprobar != null && porAprobar > 0 && (
-        <span className="rounded-full bg-surface px-2.5 py-0.5 text-[12px] font-semibold text-danger-strong">
-          {porAprobar} por aprobar: {porAprobar === 1 ? "queda" : "quedan"} fuera si no se aprueba{porAprobar === 1 ? "" : "n"} antes
-        </span>
+        <Etiqueta tono="aviso">
+          {porAprobar} por aprobar antes del corte
+        </Etiqueta>
       )}
     </p>
   );

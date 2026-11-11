@@ -6,6 +6,7 @@ import { leerSalud, type Salud } from "@/lib/memos-admin";
 import { useMemos, type Contexto } from "@/lib/memos";
 import { supabase } from "@/lib/supabase";
 import { IconoCerrar } from "../iconos";
+import { Etiqueta } from "../piezas";
 
 const HORA = 3600e3;
 
@@ -58,9 +59,9 @@ export function PanelSalud({ contexto, onCerrar }: { contexto: Contexto | null; 
       {valor == null ? (
         <span className="hueco h-4 w-8" />
       ) : (
-        <span className={`rounded-full px-2.5 py-0.5 text-[12.5px] font-bold tabular-nums ${malo && valor > 0 ? "bg-danger-soft text-danger-strong" : "bg-success-soft text-success-strong"}`}>
+        <Etiqueta tono={malo && valor > 0 ? "peligro" : "ok"} className="tabular-nums">
           {valor}
-        </span>
+        </Etiqueta>
       )}
     </li>
   );
@@ -116,7 +117,7 @@ export function PanelSalud({ contexto, onCerrar }: { contexto: Contexto | null; 
                 {s.corridas.map((c) => (
                   <li key={c.id} className="flex flex-wrap items-baseline gap-x-3 py-2">
                     <span className="font-semibold text-ink">{c.job}</span>
-                    <span className={c.resultado === "ERROR" ? "font-semibold text-danger-strong" : "text-success-strong"}>
+                    <span className={c.resultado === "ERROR" ? "font-semibold text-danger-strong" : "text-ink-2"}>
                       {c.resultado ?? "corriendo"}
                       {c.filas != null ? ` · ${c.filas} filas` : ""}
                     </span>

@@ -11,7 +11,7 @@ import { cuando } from "@/lib/fechas";
 import { CERRADAS, recargarRendiciones, tituloRendicion, useRendiciones } from "@/lib/rendiciones";
 import { PaginaAdmin, cabeceraAdmin, tablaAdmin } from "../administracion";
 import { Indicador, Pestanita } from "../mis-rendiciones";
-import { Aviso, Estado, botonPrincipal, botonSecundario, campoSuelto } from "../piezas";
+import { Aviso, Estado, Etiqueta, botonPrincipal, botonSecundario, campoSuelto, type Tono } from "../piezas";
 
 type Pestana = "enviada" | "observada" | "aprobada" | "cerradas" | "todas";
 
@@ -46,11 +46,7 @@ function alertas(r: RendicionConResumen, repetidos: number): Alerta[] {
   return l;
 }
 
-const TONO: Record<Alerta["tono"], string> = {
-  rojo: "bg-danger-soft text-danger-strong",
-  ambar: "bg-warning-soft text-warning-strong",
-  gris: "bg-surface-2 text-ink-2",
-};
+const TONO: Record<Alerta["tono"], Tono> = { rojo: "peligro", ambar: "aviso", gris: "neutro" };
 
 function Contenido() {
   const { rendiciones, error } = useRendiciones();
@@ -190,12 +186,12 @@ function Contenido() {
                         <span className="flex flex-wrap gap-1">
                           {a.length ? (
                             a.map((x) => (
-                              <span key={x.texto} className={`whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold ${TONO[x.tono]}`}>
+                              <Etiqueta key={x.texto} tono={TONO[x.tono]}>
                                 {x.texto}
-                              </span>
+                              </Etiqueta>
                             ))
                           ) : (
-                            <span className="rounded-md bg-success-soft px-2 py-0.5 text-xs font-semibold text-success-strong">Sin alertas</span>
+                            <Etiqueta tono="ok">Sin alertas</Etiqueta>
                           )}
                         </span>
                       </td>
