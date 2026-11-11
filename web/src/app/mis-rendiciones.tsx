@@ -9,7 +9,8 @@ import { cuando, fechaCorta } from "@/lib/fechas";
 import { ABIERTAS, CERRADAS, tituloRendicion, useRendiciones } from "@/lib/rendiciones";
 import type { Persona } from "@/lib/sesion";
 import { NuevaRendicion } from "./nueva-rendicion";
-import { Aviso, Estado, botonPrincipal } from "./piezas";
+import { Aviso, Estado, botonPrincipal, botonSecundario } from "./piezas";
+import { Solicitar } from "./solicitar";
 
 type Pestana = "abiertas" | "revision" | "cerradas";
 
@@ -29,6 +30,8 @@ export function MisRendiciones({ persona }: { persona: Persona }) {
   const [pestana, setPestana] = useState<Pestana | null>(null);
   const [nueva, setNueva] = useState(false);
   const cerrarNueva = useCallback(() => setNueva(false), []);
+  const [solicitar, setSolicitar] = useState(false);
+  const cerrarSolicitar = useCallback(() => setSolicitar(false), []);
 
   const mias = (rendiciones ?? []).filter((r) => r.responsable_id === persona.id);
   const abiertas = mias.filter((r) => en(ABIERTAS, r.estado));
@@ -43,8 +46,12 @@ export function MisRendiciones({ persona }: { persona: Persona }) {
   const sumar = (l: RendicionConResumen[], f: (r: RendicionConResumen) => number) => l.reduce((s, r) => s + f(r), 0);
   const gastadoAbiertas = sumar(abiertas, (r) => resumen(r).c.gastado);
   const montoAbiertas = sumar(abiertas, (r) => aNumero(r.monto));
-  const porDevolver = sumar(abiertas, (r) => Math.max(resumen(r).c.saldo, 0));
+  // Lo que sobra de un memo se devuelve; lo que sobra en una caja chica se queda en la caja.
+  const memosAbiertos = abiertas.filter((r) => r.tipo === "memo");
+  const cajasAbiertas = abiertas.filter((r) => r.tipo === "caja");
+  const porDevolver = sumar(memosAbiertos, (r) => Math.max(resumen(r).c.saldo, 0));
   const aReembolsar = sumar(abiertas, (r) => Math.max(-resumen(r).c.saldo, 0));
+  const enCaja = sumar(cajasAbiertas, (r) => Math.max(resumen(r).c.saldo, 0));
 
   return (
     <div className="space-y-5">
@@ -53,9 +60,14 @@ export function MisRendiciones({ persona }: { persona: Persona }) {
           <h1 className="text-[21px] font-extrabold text-ink">Mis rendiciones</h1>
           <p className="mt-1 text-ink-2">Tus memos de viáticos y las cajas chicas que administras.</p>
         </div>
-        <button type="button" onClick={() => setNueva(true)} className={botonPrincipal}>
-          Nueva rendición
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setNueva(true)} className={botonPrincipal}>
+            Nueva rendición
+          </button>
+          <button type="button" onClick={() => setSolicitar(true)} className={botonSecundario}>
+            Solicitar viáticos
+          </button>
+        </div>
       </header>
 
       {error && <Aviso>{error}</Aviso>}
@@ -76,11 +88,17 @@ export function MisRendiciones({ persona }: { persona: Persona }) {
             detalle={observadas[0] ? `${tituloRendicion(observadas[0])}: ${observadas[0].observacion || "revisa las filas marcadas"}` : "Nada pendiente"}
             alerta={observadas.length > 0}
           />
-          <Indicador
-            titulo="Por devolver"
-            valor={soles(porDevolver)}
-            detalle={aReembolsar > 0 ? `y ${soles(aReembolsar)} a reembolsarte` : "De lo que sigue abierto"}
-          />
+          {memosAbiertos.length === 0 && cajasAbiertas.length > 0 ? (
+            <Indicador titulo="Queda en caja" valor={soles(enCaja)} detalle={aReembolsar > 0 ? `y ${soles(aReembolsar)} a reponer de más` : "Lo que no se gastó todavía"} />
+          ) : (
+            <Indicador
+              titulo="Por devolver"
+              valor={soles(porDevolver)}
+              detalle={
+                aReembolsar > 0 ? `y ${soles(aReembolsar)} a reembolsarte` : enCaja > 0 ? `De tus viáticos · ${soles(enCaja)} quedan en caja` : "De lo que sigue abierto"
+              }
+            />
+          )}
         </section>
       )}
 
@@ -190,6 +208,7 @@ export function MisRendiciones({ persona }: { persona: Persona }) {
       )}
 
       {nueva && <NuevaRendicion persona={persona} onCerrar={cerrarNueva} />}
+      {solicitar && <Solicitar persona={persona} origen="rendiciones" onCerrar={cerrarSolicitar} />}
     </div>
   );
 }
@@ -212,7 +231,7 @@ export function Indicador({
         {alerta && <span className="h-2 w-2 shrink-0 rounded-full bg-danger" aria-label="Hay algo que revisar" />}
         {titulo}
       </p>
-      <p className="truncate text-2xl font-extrabold leading-tight tracking-[-0.025em] text-ink tabular-nums">{valor}</p>
+      <p className="break-words text-xl font-extrabold leading-tight tracking-[-0.025em] text-ink tabular-nums sm:text-2xl">{valor}</p>
       <p className="mt-1.5 line-clamp-2 text-xs text-ink-2">{detalle}</p>
     </div>
   );
