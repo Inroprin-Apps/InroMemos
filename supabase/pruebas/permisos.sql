@@ -311,6 +311,36 @@ insert into proyectos (nombre) values ('PAQ 09 CHINA CIVIL');
 select pruebas.falla($$insert into proyectos (nombre) values ('paq 02 china civil')$$,
   'el mismo proyecto con otras mayúsculas no se duplica');
 
+\echo '\n· Catálogos: proponer un proyecto desde la hoja'
+
+reset role; select pruebas.como('ana@inroprin.com');
+select proponer_proyecto('  taller   nuevo  puno ') as propuesto \gset
+select pruebas.ok((select nombre = 'TALLER NUEVO PUNO' and not confirmado and activo and propuesto_por = auth.uid()
+                     from proyectos where id = :propuesto),
+  'quien rinde propone un proyecto que falta: queda en mayúsculas, por confirmar y a su nombre');
+select pruebas.ok(proponer_proyecto('Taller nuevo PUNO') = :propuesto, 'proponer uno que ya existe devuelve el mismo, no lo duplica');
+select pruebas.ok(proponer_proyecto('paq 02 china civil') = (select id from proyectos where nombre = 'PAQ 02 CHINA CIVIL'),
+  'ni duplica uno confirmado');
+select pruebas.falla($$select proponer_proyecto('ab')$$, 'un nombre de dos letras no es un proyecto');
+update proyectos set confirmado = true where id = :propuesto;
+select pruebas.ok((select not confirmado from proyectos where id = :propuesto), 'quien propone no se lo confirma solo');
+select proponer_proyecto('PROPUESTO 2'); select proponer_proyecto('PROPUESTO 3');
+select proponer_proyecto('PROPUESTO 4'); select proponer_proyecto('PROPUESTO 5');
+select pruebas.falla($$select proponer_proyecto('PROPUESTO 6')$$, 'a lo más cinco propuestas esperando confirmación por persona');
+
+reset role; select pruebas.como('carla@inroprin.com');
+update proyectos set confirmado = true where id = :propuesto;
+select pruebas.ok((select confirmado from proyectos where id = :propuesto), 'administración lo confirma');
+update proyectos set activo = false where nombre in ('PROPUESTO 2', 'PROPUESTO 3', 'PROPUESTO 4', 'PROPUESTO 5');
+select proponer_proyecto('PROYECTO DE ADMINISTRACION') as de_admin \gset
+select pruebas.ok((select confirmado from proyectos where id = :de_admin), 'lo que agrega administración nace confirmado');
+
+reset role; select pruebas.como('ana@inroprin.com');
+select pruebas.falla($$select proponer_proyecto('propuesto 2')$$, 'uno desactivado no se vuelve a proponer');
+select pruebas.ok(proponer_proyecto('OTRO MAS') > 0, 'confirmados o desactivados los anteriores, puede proponer otro');
+reset role; select pruebas.como('carla@inroprin.com');
+update proyectos set activo = false where nombre in ('OTRO MAS', 'PROYECTO DE ADMINISTRACION', 'TALLER NUEVO PUNO');
+
 \echo '\n· Procesador (sistema)'
 
 reset role; select pruebas.como_sistema();

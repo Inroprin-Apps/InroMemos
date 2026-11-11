@@ -20,7 +20,7 @@ export async function leerCatalogos(): Promise<Catalogos> {
   const [empresas, areas, proyectos, tipos, conceptos] = await Promise.all([
     db.from("empresas").select("id, nombre, activo").order("nombre"),
     db.from("areas").select("id, nombre, activo").order("orden"),
-    db.from("proyectos").select("id, nombre, activo").order("nombre"),
+    db.from("proyectos").select("id, nombre, activo, confirmado, propuesto_por").order("nombre"),
     db.from("tipos_comprobante").select("id, nombre, sustenta, orden, activo").order("orden"),
     db.from("conceptos").select("id, nombre, categoria, subcategoria, activo").order("nombre"),
   ]);
@@ -32,6 +32,10 @@ export async function leerCatalogos(): Promise<Catalogos> {
     conceptos: exigir(conceptos),
   };
 }
+
+// La línea del memo de entrega: de ahí salen las fechas del viaje y el proyecto.
+// Si quien mira no puede ver esa línea, llega nula y no pasa nada.
+const ENTREGA = "entrega:lineas_pago!linea_entrega_id(viaje_desde, viaje_hasta, proyecto_id)";
 
 export type FilaResumen = Pick<
   Comprobante,
@@ -48,7 +52,7 @@ export async function leerRendiciones(): Promise<RendicionConResumen[]> {
   const r = await supabase()
     .from("rendiciones")
     .select(
-      "*, caja:cajas(numero), responsable:personas(nombre, correo), comprobantes(total, tipo_comprobante_id, descartado, fecha, numero, proyecto_id, concepto_id, moneda, observacion)",
+      `*, caja:cajas(numero), responsable:personas(nombre, correo), ${ENTREGA}, comprobantes(total, tipo_comprobante_id, descartado, fecha, numero, proyecto_id, concepto_id, moneda, observacion)`,
     )
     .order("creado_en", { ascending: false });
   return exigir(r) as RendicionConResumen[];
@@ -107,7 +111,7 @@ export type DatosRendicion = {
 export async function leerRendicion(id: string): Promise<DatosRendicion> {
   const db = supabase();
   const [rendicion, comprobantes, archivos] = await Promise.all([
-    db.from("rendiciones").select("*, responsable:personas(nombre, correo)").eq("id", id).single(),
+    db.from("rendiciones").select(`*, responsable:personas(nombre, correo), ${ENTREGA}`).eq("id", id).single(),
     db.from("comprobantes").select("*").eq("rendicion_id", id).order("creado_en").order("pagina"),
     db.from("archivos").select("id, ruta, drive_id, tipo_mime, estado_lectura, error").eq("rendicion_id", id),
   ]);
@@ -155,6 +159,21 @@ export async function cambiarRendicion(
 ): Promise<Rendicion> {
   const r = await supabase().from("rendiciones").update(cambios).eq("id", id).select("*").single();
   return exigir(r) as Rendicion;
+}
+
+/**
+ * El proyecto con ese nombre; si no está en la lista, lo crea «por confirmar»
+ * para que quien rinde no se quede esperando a administración.
+ */
+export async function proponerProyecto(nombre: string): Promise<number> {
+  return exigir(await supabase().rpc("proponer_proyecto", { nombre })) as number;
+}
+
+/** La razón social de un RUC según el padrón de SUNAT (copia de INROCONTA); nula si no está. */
+export async function razonSocial(ruc: string): Promise<string | null> {
+  if (!/^(10|15|17|20)\d{9}$/.test(ruc)) return null;
+  const { data } = await supabase().from("contribuyentes").select("razon_social").eq("ruc", ruc).maybeSingle();
+  return (data as { razon_social: string | null } | null)?.razon_social?.trim() || null;
 }
 
 /** La base sube la versión y bloquea la edición hasta que administración la revise. */

@@ -180,7 +180,7 @@ export async function leerCatalogosMemo(): Promise<CatalogosMemo> {
     db.from("tipos_memo").select("*").order("familia").order("nombre"),
     db.from("sustentos_tipo").select("id, tipo_codigo, documento, nivel, condicion, umbral").eq("activo", true),
     db.from("empresas").select("id, nombre, codigo, activo").order("nombre"),
-    db.from("proyectos").select("id, nombre, activo").order("nombre"),
+    db.from("proyectos").select("id, nombre, activo, confirmado").order("nombre"),
     db.from("conceptos").select("id, nombre, activo").order("nombre"),
     db.from("parametros_memo").select("meta_atencion_horas, segundo_control_pagos, cuenta_verificada_para_pagar, solicitar_memo").maybeSingle(),
   ]);
@@ -189,7 +189,13 @@ export async function leerCatalogosMemo(): Promise<CatalogosMemo> {
     tipos: exigir(tipos) as TipoMemo[],
     sustentos: exigir(sustentos) as Sustento[],
     empresas: exigir(empresas),
-    proyectos: exigir(proyectos),
+    // Un proyecto propuesto en una rendición no se ofrece en un memo hasta que
+    // administración lo confirme (la lista de los memos va al registro de gastos).
+    proyectos: (exigir(proyectos) as { id: number; nombre: string; activo: boolean; confirmado?: boolean }[]).map((p) => ({
+      id: p.id,
+      nombre: p.nombre,
+      activo: p.activo && p.confirmado !== false,
+    })),
     conceptos: exigir(conceptos),
     parametros: (parametros.data as ParametrosMemo | null) ?? {
       meta_atencion_horas: 3,

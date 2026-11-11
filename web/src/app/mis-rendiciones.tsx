@@ -205,11 +205,15 @@ export function Indicador({
   detalle: string;
   alerta?: boolean;
 }) {
+  // Como el Kpi de INROCONTA: la tarjeta no se pinta; un punto rojo junto al título avisa.
   return (
-    <div className={`rounded-card border border-control p-4 ${alerta ? "bg-danger-soft text-danger-strong" : "bg-surface"}`}>
-      <p className={`text-xs font-bold uppercase tracking-wider ${alerta ? "" : "text-ink-3"}`}>{titulo}</p>
-      <p className="mt-1.5 text-2xl font-bold">{valor}</p>
-      <p className={`mt-0.5 line-clamp-2 text-[13px] ${alerta ? "" : "text-ink-3"}`}>{detalle}</p>
+    <div className="min-w-0 rounded-card border border-control bg-surface px-4.5 pb-3.5 pt-4">
+      <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3">
+        {alerta && <span className="h-2 w-2 shrink-0 rounded-full bg-danger" aria-label="Hay algo que revisar" />}
+        {titulo}
+      </p>
+      <p className="truncate text-2xl font-extrabold leading-tight tracking-[-0.025em] text-ink tabular-nums">{valor}</p>
+      <p className="mt-1.5 line-clamp-2 text-xs text-ink-2">{detalle}</p>
     </div>
   );
 }

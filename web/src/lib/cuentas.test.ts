@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cuentas, soles } from "./cuentas";
+import { cuentas, porProyecto, soles } from "./cuentas";
 
 const fila = (total: number | string | null, tipo: string | null, descartado = false) => ({
   total,
@@ -75,5 +75,18 @@ describe("cuentas de la rendición", () => {
   it("escribe los soles como en Perú", () => {
     expect(soles(1234.5)).toBe("S/ 1,234.50");
     expect(soles(null)).toBe("S/ 0.00");
+  });
+});
+
+describe("gasto por proyecto", () => {
+  it("suma por proyecto, sin lo descartado ni los dólares, el mayor primero", () => {
+    const f = (proyecto_id: number | null, total: number, extra: object = {}) => ({ proyecto_id, total, tipo_comprobante_id: "BOLETA", descartado: false, ...extra });
+    expect(
+      porProyecto([f(1, 10.1), f(2, 50), f(1, 0.2), f(null, 5), f(2, 99, { descartado: true }), f(1, 30, { moneda: "USD" })]),
+    ).toEqual([
+      { proyecto_id: 2, cuantos: 1, importe: 50 },
+      { proyecto_id: 1, cuantos: 2, importe: 10.3 },
+      { proyecto_id: null, cuantos: 1, importe: 5 },
+    ]);
   });
 });

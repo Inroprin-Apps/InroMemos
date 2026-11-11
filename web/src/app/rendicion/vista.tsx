@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCatalogos } from "@/lib/catalogos";
 import { faltan, herencia } from "@/lib/comprobante";
-import { cuentas } from "@/lib/cuentas";
+import { cuentas, porProyecto } from "@/lib/cuentas";
 import {
   agregarComprobante,
   cambiarComprobante,
@@ -14,6 +14,7 @@ import {
   enviar,
   leerRendicion,
   leerRepetidos,
+  razonSocial,
   type CambiosComprobante,
   type DatosRendicion,
 } from "@/lib/datos";
@@ -170,7 +171,15 @@ export function useRendicion(id: string, persona: Persona) {
 
   const acciones = {
     guardarFila: (fila: string, cambios: CambiosComprobante) =>
-      ejecutar(async () => reemplazar([await cambiarComprobante(fila, cambios)])),
+      ejecutar(async () => {
+        // Al escribir el RUC, el proveedor sale del padrón de SUNAT si todavía no hay uno.
+        const actual = datosActuales.current?.comprobantes.find((x) => x.id === fila);
+        if (cambios.ruc && cambios.proveedor === undefined && actual && !actual.proveedor) {
+          const nombre = await razonSocial(cambios.ruc).catch(() => null);
+          if (nombre) cambios = { ...cambios, proveedor: nombre.toUpperCase() };
+        }
+        reemplazar([await cambiarComprobante(fila, cambios)]);
+      }),
     guardarVarios: (ids: string[], cambios: CambiosComprobante) =>
       ejecutar(async () => reemplazar(await cambiarComprobantes(ids, cambios))),
     guardarRendicion: (cambios: Parameters<typeof cambiarRendicion>[1]) =>
@@ -179,7 +188,7 @@ export function useRendicion(id: string, persona: Persona) {
       ejecutar(async () => {
         const d = datosActuales.current;
         if (!d) return;
-        const nueva = await agregarComprobante(id, herencia(d.comprobantes, d.rendicion.tipo, persona));
+        const nueva = await agregarComprobante(id, herencia(d.comprobantes, d.rendicion.tipo, persona, d.rendicion.entrega?.proyecto_id ?? null));
         setDatos((x) => x && { ...x, comprobantes: [...x.comprobantes, nueva] });
       }),
     enviar: () =>
@@ -209,6 +218,7 @@ function HojaRendicion({ id, persona }: { id: string; persona: Persona }) {
     persona,
     filasActuales: () => datosActuales.current?.comprobantes ?? [],
   });
+  const gastoPorProyecto = useMemo(() => porProyecto(datos?.comprobantes ?? []), [datos?.comprobantes]);
 
   if (error && !datos) return <Aviso>{error}</Aviso>;
   if (errorCatalogos) return <Aviso>{errorCatalogos}</Aviso>;
@@ -328,6 +338,7 @@ function HojaRendicion({ id, persona }: { id: string; persona: Persona }) {
         responsable={responsable}
         catalogos={catalogos}
         c={c}
+        porProyecto={gastoPorProyecto}
         editable={editable}
         intento={intento}
         onGuardar={acciones.guardarRendicion}
@@ -341,6 +352,7 @@ function HojaRendicion({ id, persona }: { id: string; persona: Persona }) {
         archivos={archivos}
         repetidos={repetidos}
         catalogos={catalogos}
+        viaje={r.entrega}
         editable={editable && !sinSenal}
         intento={intento}
         onGuardar={acciones.guardarFila}
