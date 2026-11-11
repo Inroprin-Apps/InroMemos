@@ -24,9 +24,9 @@ export function PaginaAdmin({
       {(persona) =>
         persona.es_administracion ? (
           <div className="space-y-5">
-            <header className="flex flex-wrap items-end justify-between gap-3">
+            <header className="flex flex-wrap items-end justify-between gap-3 md:pr-12">
               <div>
-                <h1 className="text-2xl font-bold text-ink">{titulo}</h1>
+                <h1 className="text-[21px] font-extrabold text-ink">{titulo}</h1>
                 <p className="mt-1 text-ink-2">{descripcion}</p>
               </div>
               {acciones}

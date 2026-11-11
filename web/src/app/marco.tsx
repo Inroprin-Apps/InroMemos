@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { ruta } from "@/lib/base";
 import { pendientesActuales, usePendientes } from "@/lib/cola";
 import { useEnLinea } from "@/lib/conexion";
@@ -196,7 +196,11 @@ function Armazon({
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <CabeceraMovil persona={persona} modulo={modulo} />
-        <main key={camino} className="animar-entrada min-w-0 flex-1 px-4 pb-28 pt-4 md:px-6 md:pb-8 md:pt-6">
+        <main key={camino} className="animar-entrada relative min-w-0 flex-1 px-4 pb-28 pt-4 md:px-7 md:pb-10 md:pt-5.5">
+          {/* Quién está dentro, arriba a la derecha (como INROCONTA); los títulos le dejan sitio. */}
+          <div className="absolute right-7 top-4 hidden md:block">
+            <Cuenta persona={persona} />
+          </div>
           {children}
         </main>
       </div>
@@ -368,15 +372,6 @@ function BarraLateral({
     (r) => r.responsable_id === persona.id && (EN_CURSO as readonly string[]).includes(r.estado),
   );
   const { items, admin, general, porAtender, porRevisar } = useMenu(persona, modulo);
-  const permisosRol = useContextoMemos(persona.correo).contexto?.permisos;
-  // El rol, como en el pie del menú de Franco.
-  const rol = persona.es_administracion
-    ? "Administración"
-    : permisosRol?.aprueba.length
-      ? "Jefatura de área"
-      : permisosRol?.emite.length
-        ? "Emite memos"
-        : persona.correo;
   const pestana = usePestanaPanel();
   const PESTANAS_MENU = ["pendiente", "sin-cargo", "por-pagar"];
   const marcado = (it: Item) =>
@@ -427,24 +422,18 @@ function BarraLateral({
   return (
     <nav
       aria-label="Navegación principal"
-      className="sticky top-0 hidden h-dvh w-63 shrink-0 flex-col gap-5 overflow-y-auto border-r border-line bg-surface px-3.5 py-5 md:flex"
+      className="no-scrollbar sticky top-0 hidden h-dvh w-63 shrink-0 flex-col gap-4.5 overflow-y-auto border-r border-line bg-surface px-4 pb-4.5 pt-5.5 md:flex"
     >
-      {/* Encabezado como el de Franco: la plataforma, el grupo y cuántas empresas. */}
-      <div className="px-1.5">
-        <div className="flex items-center gap-2.5">
-          <Link href="/" className="flex items-center gap-2.5">
-            <Image src={ruta("inroprin-marca.svg")} alt="" width={28} height={28} />
-            <Marca className="text-[16px]" />
-          </Link>
-          {onAlternar && (
-            <button type="button" onClick={onAlternar} aria-label="Contraer la barra" title="Contraer la barra" className="ml-auto flex h-8 w-8 items-center justify-center rounded-control text-ink-2 hover:bg-surface-2">
-              <IconoIzquierda className="h-4.5 w-4.5" />
-            </button>
-          )}
-        </div>
-        <p className="mt-1.5 text-[12.5px] font-semibold leading-tight text-ink-2">{modulo === "memos" ? "Plataforma de Memorandums" : "Rendiciones de caja chica y viáticos"}</p>
-        <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-3">Grupo INROPRIN{empresas ? ` · ${empresas} empresas` : ""}</p>
-      </div>
+      {/* Como INROCONTA: el ícono, el nombre y una línea de qué es (con lo del encabezado de Franco). */}
+      <Link href="/" className="flex items-center gap-2.5 text-ink no-underline">
+        <Image src={ruta("inroprin-marca.svg")} alt="" width={36} height={36} className="flex-none" />
+        <span className="min-w-0">
+          <Marca />
+          <span className="block text-xs text-ink-3">
+            {modulo === "memos" ? `Memorandums${empresas ? ` · ${empresas} empresas` : " · Grupo INROPRIN"}` : "Rendiciones de caja y viáticos"}
+          </span>
+        </span>
+      </Link>
 
       <SelectorModulo modulo={modulo} porAtender={porAtender} porRevisar={persona.es_administracion ? porRevisar : 0} />
 
@@ -533,14 +522,17 @@ function BarraLateral({
           {enCola} por subir
         </button>
       )}
-      <div className={`${enCola > 0 ? "" : "mt-auto "}flex items-center gap-2.5 border-t border-line px-1.5 pt-3.5`}>
-        <Iniciales persona={persona} />
-        <span className="flex min-w-0 flex-col">
-          <span className="truncate text-sm font-semibold text-ink">{persona.nombre || persona.correo}</span>
-          <span className="truncate text-xs text-ink-3">{rol}</span>
-        </span>
-        <BotonSalir />
-      </div>
+      {/* Al pie, como en INROCONTA: contraer es lo que menos se usa. */}
+      {onAlternar && (
+        <button
+          type="button"
+          onClick={onAlternar}
+          className={`${enCola > 0 ? "" : "mt-auto "}flex items-center gap-2.5 border-t border-line px-2.5 pb-1 pt-3.5 text-[13px] font-semibold text-ink-3 transition-colors duration-100 hover:text-ink`}
+        >
+          <IconoIzquierda className="h-4.25 w-4.25" />
+          Contraer
+        </button>
+      )}
     </nav>
   );
 }
@@ -552,9 +544,68 @@ function Iniciales({ persona }: { persona: Persona }) {
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("");
   return (
-    <span aria-hidden="true" className="flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-full bg-primary-soft text-[13px] font-bold text-primary-strong">
+    <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-soft text-[12px] font-bold text-primary-strong">
       {iniciales}
     </span>
+  );
+}
+
+/** La cuenta, arriba a la derecha: las iniciales y, al hacer clic, nombre, correo, rol y salir. */
+function Cuenta({ persona }: { persona: Persona }) {
+  const [abierto, setAbierto] = useState(false);
+  const [saliendo, setSaliendo] = useState(false);
+  const caja = useRef<HTMLDivElement>(null);
+  const permisos = useContextoMemos(persona.correo).contexto?.permisos;
+  const rol = persona.es_administracion
+    ? "Administración"
+    : permisos?.aprueba.length
+      ? "Jefatura de área"
+      : permisos?.emite.length
+        ? "Emite memos"
+        : "Consulta";
+  useEffect(() => {
+    if (!abierto) return;
+    const cerrar = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !caja.current?.contains(e.target as Node)) setAbierto(false);
+    };
+    document.addEventListener("mousedown", cerrar);
+    document.addEventListener("keydown", cerrar);
+    return () => {
+      document.removeEventListener("mousedown", cerrar);
+      document.removeEventListener("keydown", cerrar);
+    };
+  }, [abierto]);
+  return (
+    <div ref={caja} className="relative">
+      <button
+        type="button"
+        onClick={() => setAbierto(!abierto)}
+        aria-label="Tu cuenta"
+        aria-expanded={abierto}
+        title={`${persona.nombre || persona.correo} · ${persona.correo}`}
+        className="flex rounded-full outline-offset-2 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-primary"
+      >
+        <Iniciales persona={persona} />
+      </button>
+      {abierto && (
+        <div className="animar-dialogo absolute right-0 top-10 z-50 w-64 rounded-card border border-control bg-surface p-3.5 text-xs">
+          {persona.nombre && <p className="truncate text-[13px] font-bold text-ink">{persona.nombre}</p>}
+          <p className="truncate text-ink-2">{persona.correo}</p>
+          <p className="mt-0.5 text-ink-3">{rol}</p>
+          <button
+            type="button"
+            disabled={saliendo}
+            onClick={() => {
+              setSaliendo(true);
+              salir();
+            }}
+            className="mt-3 w-full rounded-[9px] border border-control px-3 py-2 text-left text-[12.5px] font-semibold text-ink-2 hover:bg-surface-2 hover:text-ink active:bg-surface-3"
+          >
+            {saliendo ? "Saliendo…" : "Cerrar sesión"}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -127,7 +127,7 @@ function Contenido({ persona }: { persona: Persona }) {
                       <span className="w-24 shrink-0 text-ink-2">
                         <b className="font-semibold tabular-nums text-ink">{n}</b> · {ESCALA[n]}
                       </span>
-                      <span className="h-1.5 flex-1 overflow-hidden rounded-bar bg-surface-3">
+                      <span className="h-2 flex-1 overflow-hidden rounded-md bg-surface-3">
                         <span
                           className="block h-full rounded-bar bg-primary transition-[width] duration-500"
                           style={{ width: `${(c / totalAcogida) * 100}%` }}

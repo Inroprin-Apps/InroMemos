@@ -116,7 +116,7 @@ function Revisar({ id, inicial, persona }: { id: string; inicial: string | null;
 
   return (
     <div className="flex flex-col gap-3">
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-card border border-control bg-surface px-4 py-3">
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-card border border-control bg-surface px-4 py-3 md:mr-12">
         <Link href={`/rendicion/?id=${r.id}`} className="text-sm font-semibold text-primary-strong hover:underline">
           ← Volver a la hoja
         </Link>

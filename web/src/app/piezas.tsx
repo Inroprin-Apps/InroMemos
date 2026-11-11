@@ -5,26 +5,22 @@ import { soles } from "@/lib/cuentas";
 import type { EstadoRendicion } from "@/lib/tipos";
 
 /**
- * El color de un estado: solo un punto. La etiqueta es blanca con borde fino
- * y texto gris, para que la pantalla no se llene de colores; el punto dice
- * de qué se trata (gris, azul, verde, ámbar, rojo).
+ * La etiqueta de un estado: el Chip de INROCONTA (pastilla de color suave,
+ * texto en el tono fuerte). Una por estado, sin rellenos sólidos.
  */
 export type Tono = "neutro" | "info" | "ok" | "aviso" | "peligro";
 
-const PUNTO: Record<Tono, string> = {
-  neutro: "bg-ink-3",
-  info: "bg-primary",
-  ok: "bg-success",
-  aviso: "bg-warning-strong",
-  peligro: "bg-danger",
+const CHIP: Record<Tono, string> = {
+  neutro: "bg-surface-3 text-ink-2",
+  info: "bg-primary-soft text-primary-strong",
+  ok: "bg-success-soft text-success-strong",
+  aviso: "bg-warning-soft text-warning-strong",
+  peligro: "bg-danger-soft text-danger-strong",
 };
 
 export function Etiqueta({ tono, children, className = "" }: { tono: Tono; children: ReactNode; className?: string }) {
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-surface px-2 py-0.5 text-[12px] font-semibold text-ink-2 ${className}`}
-    >
-      <span aria-hidden="true" className={`h-1.5 w-1.5 shrink-0 rounded-full ${PUNTO[tono]}`} />
+    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[12.5px] font-semibold ${CHIP[tono]} ${className}`}>
       {children}
     </span>
   );
@@ -78,10 +74,10 @@ export function Aviso({ tono = "peligro", children }: { tono?: "peligro" | "avis
   const clases = {
     peligro: "bg-danger-soft text-danger-strong",
     aviso: "bg-warning-soft text-warning-strong",
-    info: "border border-line bg-surface-2 text-ink-2",
+    info: "bg-primary-soft text-primary-strong",
   }[tono];
   return (
-    <p role="alert" className={`rounded-control px-4 py-3 text-sm ${clases}`}>
+    <p role="alert" className={`rounded-xl px-4 py-3 text-[13px] ${clases}`}>
       {children}
     </p>
   );
@@ -91,12 +87,14 @@ export function Tarjeta({ children, className = "" }: { children: ReactNode; cla
   return <section className={`rounded-card border border-control bg-surface p-4 sm:px-5.5 sm:py-5 ${className}`}>{children}</section>;
 }
 
+// Botones y campos como los de INROCONTA (button.tsx y CONTROL): esquina de 9 px,
+// 13 px, cinco estados (normal, encima, presionado, foco de teclado, apagado).
 export const botonPrincipal =
-  "rounded-control bg-primary px-4 py-2.5 font-semibold text-on-fill transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-disabled disabled:text-disabled-ink";
+  "rounded-[9px] bg-primary px-3.5 py-2 text-[13px] font-semibold text-on-fill transition-colors duration-100 hover:bg-primary-hover active:bg-primary-active focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:bg-disabled disabled:text-disabled-ink";
 export const botonSecundario =
-  "rounded-control border border-control bg-surface px-4 py-2.5 font-medium text-ink-2 transition hover:bg-surface-2 disabled:cursor-not-allowed disabled:bg-disabled disabled:text-disabled-ink";
+  "rounded-[9px] border border-control bg-surface px-3.5 py-2 text-[13px] font-semibold text-ink transition-colors duration-100 hover:bg-surface-2 active:bg-surface-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:border-disabled disabled:bg-disabled disabled:text-disabled-ink";
 export const campo =
-  "w-full rounded-control border border-control bg-surface px-3 py-2 text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary-soft disabled:bg-surface-2 disabled:text-ink-2";
+  "w-full rounded-[9px] border border-control bg-surface px-2.5 py-2 text-[13.5px] text-ink outline-none focus:border-primary disabled:bg-disabled disabled:text-disabled-ink";
 
 /** Un campo que no ocupa todo el ancho: para filtros en una misma línea. */
 export const campoSuelto = campo.replace("w-full ", "");

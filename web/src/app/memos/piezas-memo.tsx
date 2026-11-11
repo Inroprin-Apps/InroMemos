@@ -44,7 +44,7 @@ export function ChipPropuesta({ className = "" }: { className?: string }) {
 /** El título de cada pantalla, con su explicación y, a la derecha, sus acciones. */
 export function Encabezado({ titulo, descripcion, children }: { titulo: string; descripcion?: string; children?: ReactNode }) {
   return (
-    <header className="flex flex-wrap items-start justify-between gap-3">
+    <header className="flex flex-wrap items-start justify-between gap-3 md:pr-12">
       <div className="min-w-0">
         <h1 className="text-[21px] font-extrabold text-ink">{titulo}</h1>
         {descripcion && <p className="mt-0.5 text-ink-2">{descripcion}</p>}

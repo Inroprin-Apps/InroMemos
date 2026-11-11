@@ -18,13 +18,13 @@ const rotulo = "text-[11px] font-bold uppercase tracking-wider text-ink-3";
 /** Título, estado y acciones de la rendición. */
 export function Cabecera({ r, caja, acciones }: { r: Rendicion; caja: Caja | null; acciones: ReactNode }) {
   return (
-    <header className="flex flex-wrap items-end justify-between gap-3">
+    <header className="flex flex-wrap items-end justify-between gap-3 md:pr-12">
       <div className="min-w-0">
         <Link href="/" className="text-[13px] font-medium text-primary-strong hover:underline">
           Mis rendiciones
         </Link>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <h1 className="text-2xl font-bold text-ink">{tituloRendicion({ ...r, caja })}</h1>
+          <h1 className="text-[21px] font-extrabold text-ink">{tituloRendicion({ ...r, caja })}</h1>
           <Estado estado={r.estado} />
           {r.version > 0 && <span className="text-[13px] text-ink-3">Versión {r.version}</span>}
         </div>
